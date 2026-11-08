@@ -1,0 +1,5320 @@
+[
+ {
+  "who": null,
+  "action": "system.health",
+  "params": {},
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "status": "ok",
+   "app": "QLCV_CBTD",
+   "version": "1.0.0",
+   "runtime": "memory",
+   "time": "2026-10-13T12:00:00Z"
+  },
+  "error": null
+ },
+ {
+  "who": null,
+  "action": "auth.me",
+  "params": {},
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "UNAUTHENTICATED",
+   "message": "Chưa đăng nhập hoặc phiên đăng nhập không hợp lệ.",
+   "details": null
+  }
+ },
+ {
+  "who": "cbtd01@example.com",
+  "action": "auth.me",
+  "params": {},
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "user": {
+    "userId": "USR-004",
+    "email": "cbtd01@example.com",
+    "fullName": "CBTD mẫu 01",
+    "employeeCode": "NV-TEST-004",
+    "orgUnit": "DV-THU-NGHIEM"
+   },
+   "role": {
+    "code": "CBTD",
+    "name": "Cán bộ tín dụng"
+   },
+   "permissions": [
+    "customer.view",
+    "dashboard.view",
+    "notification.view",
+    "progress.submit",
+    "task.create",
+    "task.start",
+    "task.view"
+   ],
+   "isDirector": false,
+   "startView": "tasks",
+   "unreadNotifications": 2,
+   "today": "2026-10-13",
+   "serverTime": "2026-10-13T12:00:00Z",
+   "version": "1.0.0"
+  },
+  "error": null
+ },
+ {
+  "who": "admin@example.com",
+  "action": "auth.me",
+  "params": {},
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "user": {
+    "userId": "USR-001",
+    "email": "admin@example.com",
+    "fullName": "Quản trị mẫu",
+    "employeeCode": "NV-TEST-001",
+    "orgUnit": "DV-THU-NGHIEM"
+   },
+   "role": {
+    "code": "Admin",
+    "name": "Quản trị"
+   },
+   "permissions": [
+    "audit.view",
+    "customer.delete",
+    "customer.maintain",
+    "customer.view",
+    "dashboard.view",
+    "dashboard.view_director",
+    "notification.view",
+    "progress.review",
+    "progress.submit",
+    "task.create",
+    "task.start",
+    "task.transfer",
+    "task.update",
+    "task.view",
+    "user.manage"
+   ],
+   "isDirector": false,
+   "startView": "admin",
+   "unreadNotifications": 0,
+   "today": "2026-10-13",
+   "serverTime": "2026-10-13T12:00:00Z",
+   "version": "1.0.0"
+  },
+  "error": null
+ },
+ {
+  "who": "bgd@example.com",
+  "action": "auth.me",
+  "params": {},
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "user": {
+    "userId": "USR-002",
+    "email": "bgd@example.com",
+    "fullName": "Ban giám đốc mẫu",
+    "employeeCode": "NV-TEST-002",
+    "orgUnit": "DV-THU-NGHIEM"
+   },
+   "role": {
+    "code": "BGD",
+    "name": "Ban Giám đốc"
+   },
+   "permissions": [
+    "customer.view",
+    "dashboard.view",
+    "notification.view",
+    "progress.submit",
+    "task.create",
+    "task.start",
+    "task.update",
+    "task.view"
+   ],
+   "isDirector": false,
+   "startView": "dashboard",
+   "unreadNotifications": 0,
+   "today": "2026-10-13",
+   "serverTime": "2026-10-13T12:00:00Z",
+   "version": "1.0.0"
+  },
+  "error": null
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "auth.me",
+  "params": {},
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "user": {
+    "userId": "USR-003",
+    "email": "ksv01@example.com",
+    "fullName": "KSV mẫu 01",
+    "employeeCode": "NV-TEST-003",
+    "orgUnit": "DV-THU-NGHIEM"
+   },
+   "role": {
+    "code": "KSV",
+    "name": "Kiểm soát viên"
+   },
+   "permissions": [
+    "customer.maintain",
+    "customer.view",
+    "dashboard.view",
+    "notification.view",
+    "progress.review",
+    "progress.submit",
+    "task.create",
+    "task.start",
+    "task.transfer",
+    "task.update",
+    "task.view"
+   ],
+   "isDirector": false,
+   "startView": "reviews",
+   "unreadNotifications": 1,
+   "today": "2026-10-13",
+   "serverTime": "2026-10-13T12:00:00Z",
+   "version": "1.0.0"
+  },
+  "error": null
+ },
+ {
+  "who": "cbtd-inactive@example.com",
+  "action": "auth.me",
+  "params": {},
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "FORBIDDEN",
+   "message": "Tài khoản đã bị vô hiệu hóa.",
+   "details": null
+  }
+ },
+ {
+  "who": "ghost@example.com",
+  "action": "auth.me",
+  "params": {},
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "FORBIDDEN",
+   "message": "Tài khoản ghost@example.com chưa được cấp quyền sử dụng hệ thống.",
+   "details": null
+  }
+ },
+ {
+  "who": "cbtd01@example.com",
+  "action": "nope.nothing",
+  "params": {},
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "NOT_FOUND",
+   "message": "Hành động không tồn tại.",
+   "details": null
+  }
+ },
+ {
+  "who": "cbtd01@example.com",
+  "action": "task.list",
+  "params": {},
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "items": [
+    {
+     "taskId": "TSK-003",
+     "taskCode": "CV-TEST-003",
+     "title": "Thu thập hồ sơ tài chính mẫu C",
+     "description": "Thu thập báo cáo tài chính mẫu",
+     "status": "completed",
+     "priority": "high",
+     "dueAt": "2026-10-10",
+     "overdue": false,
+     "archived": false,
+     "customer": {
+      "customerId": "CUS-003",
+      "code": "KH-TEST-003",
+      "name": "Khách hàng mẫu C"
+     },
+     "primary": {
+      "userId": "USR-004",
+      "name": "CBTD mẫu 01"
+     },
+     "collaborator": null,
+     "createdBy": {
+      "userId": "USR-001",
+      "name": "Quản trị mẫu"
+     },
+     "createdAt": "2026-10-09T09:00:00Z",
+     "updatedAt": "2026-10-12T10:00:00Z",
+     "completedAt": "2026-10-12T10:00:00Z",
+     "approvedProgress": 100,
+     "pendingUpdates": 0
+    },
+    {
+     "taskId": "TSK-001",
+     "taskCode": "CV-TEST-001",
+     "title": "Thẩm định hồ sơ mẫu A",
+     "description": "Thu thập và kiểm tra hồ sơ mẫu",
+     "status": "in_progress",
+     "priority": "high",
+     "dueAt": "2026-10-20",
+     "overdue": false,
+     "archived": false,
+     "customer": {
+      "customerId": "CUS-001",
+      "code": "KH-TEST-001",
+      "name": "Khách hàng mẫu A"
+     },
+     "primary": {
+      "userId": "USR-004",
+      "name": "CBTD mẫu 01"
+     },
+     "collaborator": {
+      "userId": "USR-005",
+      "name": "CBTD mẫu 02"
+     },
+     "createdBy": {
+      "userId": "USR-003",
+      "name": "KSV mẫu 01"
+     },
+     "createdAt": "2026-10-13T08:10:00Z",
+     "updatedAt": "2026-10-13T09:30:00Z",
+     "completedAt": null,
+     "approvedProgress": 30,
+     "pendingUpdates": 1
+    },
+    {
+     "taskId": "TSK-002",
+     "taskCode": "CV-TEST-002",
+     "title": "Kiểm tra tài sản bảo đảm mẫu B",
+     "description": "Kiểm tra tài sản theo danh mục mẫu",
+     "status": "not_started",
+     "priority": "normal",
+     "dueAt": "2026-10-25",
+     "overdue": false,
+     "archived": false,
+     "customer": {
+      "customerId": "CUS-002",
+      "code": "KH-TEST-002",
+      "name": "Công ty mẫu B"
+     },
+     "primary": {
+      "userId": "USR-004",
+      "name": "CBTD mẫu 01"
+     },
+     "collaborator": null,
+     "createdBy": {
+      "userId": "USR-004",
+      "name": "CBTD mẫu 01"
+     },
+     "createdAt": "2026-10-13T08:20:00Z",
+     "updatedAt": "2026-10-13T08:20:00Z",
+     "completedAt": null,
+     "approvedProgress": 0,
+     "pendingUpdates": 0
+    }
+   ],
+   "page": 1,
+   "pageSize": 20,
+   "total": 3
+  },
+  "error": null
+ },
+ {
+  "who": "cbtd01@example.com",
+  "action": "task.list",
+  "params": {
+   "status": "in_progress",
+   "sortBy": "dueAt",
+   "dir": "desc"
+  },
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "items": [
+    {
+     "taskId": "TSK-001",
+     "taskCode": "CV-TEST-001",
+     "title": "Thẩm định hồ sơ mẫu A",
+     "description": "Thu thập và kiểm tra hồ sơ mẫu",
+     "status": "in_progress",
+     "priority": "high",
+     "dueAt": "2026-10-20",
+     "overdue": false,
+     "archived": false,
+     "customer": {
+      "customerId": "CUS-001",
+      "code": "KH-TEST-001",
+      "name": "Khách hàng mẫu A"
+     },
+     "primary": {
+      "userId": "USR-004",
+      "name": "CBTD mẫu 01"
+     },
+     "collaborator": {
+      "userId": "USR-005",
+      "name": "CBTD mẫu 02"
+     },
+     "createdBy": {
+      "userId": "USR-003",
+      "name": "KSV mẫu 01"
+     },
+     "createdAt": "2026-10-13T08:10:00Z",
+     "updatedAt": "2026-10-13T09:30:00Z",
+     "completedAt": null,
+     "approvedProgress": 30,
+     "pendingUpdates": 1
+    }
+   ],
+   "page": 1,
+   "pageSize": 20,
+   "total": 1
+  },
+  "error": null
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "task.list",
+  "params": {
+   "q": "mau",
+   "page": 1,
+   "pageSize": 2
+  },
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "items": [
+    {
+     "taskId": "TSK-003",
+     "taskCode": "CV-TEST-003",
+     "title": "Thu thập hồ sơ tài chính mẫu C",
+     "description": "Thu thập báo cáo tài chính mẫu",
+     "status": "completed",
+     "priority": "high",
+     "dueAt": "2026-10-10",
+     "overdue": false,
+     "archived": false,
+     "customer": {
+      "customerId": "CUS-003",
+      "code": "KH-TEST-003",
+      "name": "Khách hàng mẫu C"
+     },
+     "primary": {
+      "userId": "USR-004",
+      "name": "CBTD mẫu 01"
+     },
+     "collaborator": null,
+     "createdBy": {
+      "userId": "USR-001",
+      "name": "Quản trị mẫu"
+     },
+     "createdAt": "2026-10-09T09:00:00Z",
+     "updatedAt": "2026-10-12T10:00:00Z",
+     "completedAt": "2026-10-12T10:00:00Z",
+     "approvedProgress": 100,
+     "pendingUpdates": 0
+    },
+    {
+     "taskId": "TSK-001",
+     "taskCode": "CV-TEST-001",
+     "title": "Thẩm định hồ sơ mẫu A",
+     "description": "Thu thập và kiểm tra hồ sơ mẫu",
+     "status": "in_progress",
+     "priority": "high",
+     "dueAt": "2026-10-20",
+     "overdue": false,
+     "archived": false,
+     "customer": {
+      "customerId": "CUS-001",
+      "code": "KH-TEST-001",
+      "name": "Khách hàng mẫu A"
+     },
+     "primary": {
+      "userId": "USR-004",
+      "name": "CBTD mẫu 01"
+     },
+     "collaborator": {
+      "userId": "USR-005",
+      "name": "CBTD mẫu 02"
+     },
+     "createdBy": {
+      "userId": "USR-003",
+      "name": "KSV mẫu 01"
+     },
+     "createdAt": "2026-10-13T08:10:00Z",
+     "updatedAt": "2026-10-13T09:30:00Z",
+     "completedAt": null,
+     "approvedProgress": 30,
+     "pendingUpdates": 1
+    }
+   ],
+   "page": 1,
+   "pageSize": 2,
+   "total": 4
+  },
+  "error": null
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "task.list",
+  "params": {
+   "overdue": true,
+   "includeArchived": true
+  },
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "items": [],
+   "page": 1,
+   "pageSize": 20,
+   "total": 0
+  },
+  "error": null
+ },
+ {
+  "who": "admin@example.com",
+  "action": "task.list",
+  "params": {
+   "priority": "high",
+   "sortBy": "priority"
+  },
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "items": [
+    {
+     "taskId": "TSK-003",
+     "taskCode": "CV-TEST-003",
+     "title": "Thu thập hồ sơ tài chính mẫu C",
+     "description": "Thu thập báo cáo tài chính mẫu",
+     "status": "completed",
+     "priority": "high",
+     "dueAt": "2026-10-10",
+     "overdue": false,
+     "archived": false,
+     "customer": {
+      "customerId": "CUS-003",
+      "code": "KH-TEST-003",
+      "name": "Khách hàng mẫu C"
+     },
+     "primary": {
+      "userId": "USR-004",
+      "name": "CBTD mẫu 01"
+     },
+     "collaborator": null,
+     "createdBy": {
+      "userId": "USR-001",
+      "name": "Quản trị mẫu"
+     },
+     "createdAt": "2026-10-09T09:00:00Z",
+     "updatedAt": "2026-10-12T10:00:00Z",
+     "completedAt": "2026-10-12T10:00:00Z",
+     "approvedProgress": 100,
+     "pendingUpdates": 0
+    },
+    {
+     "taskId": "TSK-001",
+     "taskCode": "CV-TEST-001",
+     "title": "Thẩm định hồ sơ mẫu A",
+     "description": "Thu thập và kiểm tra hồ sơ mẫu",
+     "status": "in_progress",
+     "priority": "high",
+     "dueAt": "2026-10-20",
+     "overdue": false,
+     "archived": false,
+     "customer": {
+      "customerId": "CUS-001",
+      "code": "KH-TEST-001",
+      "name": "Khách hàng mẫu A"
+     },
+     "primary": {
+      "userId": "USR-004",
+      "name": "CBTD mẫu 01"
+     },
+     "collaborator": {
+      "userId": "USR-005",
+      "name": "CBTD mẫu 02"
+     },
+     "createdBy": {
+      "userId": "USR-003",
+      "name": "KSV mẫu 01"
+     },
+     "createdAt": "2026-10-13T08:10:00Z",
+     "updatedAt": "2026-10-13T09:30:00Z",
+     "completedAt": null,
+     "approvedProgress": 30,
+     "pendingUpdates": 1
+    }
+   ],
+   "page": 1,
+   "pageSize": 20,
+   "total": 2
+  },
+  "error": null
+ },
+ {
+  "who": "cbtd03@example.com",
+  "action": "task.get",
+  "params": {
+   "taskId": "TSK-001"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "NOT_FOUND",
+   "message": "Không tìm thấy công việc.",
+   "details": null
+  }
+ },
+ {
+  "who": "cbtd01@example.com",
+  "action": "task.get",
+  "params": {
+   "taskId": "TSK-001"
+  },
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "task": {
+    "taskId": "TSK-001",
+    "taskCode": "CV-TEST-001",
+    "title": "Thẩm định hồ sơ mẫu A",
+    "description": "Thu thập và kiểm tra hồ sơ mẫu",
+    "status": "in_progress",
+    "priority": "high",
+    "dueAt": "2026-10-20",
+    "overdue": false,
+    "archived": false,
+    "customer": {
+     "customerId": "CUS-001",
+     "code": "KH-TEST-001",
+     "name": "Khách hàng mẫu A"
+    },
+    "primary": {
+     "userId": "USR-004",
+     "name": "CBTD mẫu 01"
+    },
+    "collaborator": {
+     "userId": "USR-005",
+     "name": "CBTD mẫu 02"
+    },
+    "createdBy": {
+     "userId": "USR-003",
+     "name": "KSV mẫu 01"
+    },
+    "createdAt": "2026-10-13T08:10:00Z",
+    "updatedAt": "2026-10-13T09:30:00Z",
+    "completedAt": null,
+    "approvedProgress": 30,
+    "pendingUpdates": 1
+   },
+   "updates": [
+    {
+     "updateId": "UPD-002",
+     "taskId": "TSK-001",
+     "progressPct": 60,
+     "narrative": "Đang đối chiếu hồ sơ mẫu",
+     "submittedBy": {
+      "userId": "USR-005",
+      "name": "CBTD mẫu 02"
+     },
+     "submittedAt": "2026-10-13T10:00:00Z",
+     "reviewStatus": "pending",
+     "reviewedBy": null,
+     "reviewedAt": null,
+     "reviewComment": ""
+    },
+    {
+     "updateId": "UPD-001",
+     "taskId": "TSK-001",
+     "progressPct": 30,
+     "narrative": "Đã thu thập giấy tờ cơ bản mẫu",
+     "submittedBy": {
+      "userId": "USR-004",
+      "name": "CBTD mẫu 01"
+     },
+     "submittedAt": "2026-10-13T09:00:00Z",
+     "reviewStatus": "approved",
+     "reviewedBy": {
+      "userId": "USR-003",
+      "name": "KSV mẫu 01"
+     },
+     "reviewedAt": "2026-10-13T09:30:00Z",
+     "reviewComment": "Đạt"
+    }
+   ],
+   "assignments": [
+    {
+     "assignmentId": "ASG-001",
+     "userId": "USR-004",
+     "name": "CBTD mẫu 01",
+     "role": "primary",
+     "assignedAt": "2026-10-13T08:10:00Z",
+     "active": true
+    },
+    {
+     "assignmentId": "ASG-002",
+     "userId": "USR-005",
+     "name": "CBTD mẫu 02",
+     "role": "collaborator",
+     "assignedAt": "2026-10-13T08:12:00Z",
+     "active": true
+    },
+    {
+     "assignmentId": "ASG-003",
+     "userId": "USR-006",
+     "name": "CBTD mẫu 03",
+     "role": "collaborator",
+     "assignedAt": "2026-10-13T08:11:00Z",
+     "active": false
+    }
+   ],
+   "can": {
+    "start": false,
+    "submitProgress": true,
+    "edit": false,
+    "transfer": false,
+    "archive": false,
+    "review": false
+   }
+  },
+  "error": null
+ },
+ {
+  "who": "cbtd01@example.com",
+  "action": "task.get",
+  "params": {
+   "taskId": "TSK-999"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "NOT_FOUND",
+   "message": "Không tìm thấy công việc.",
+   "details": null
+  }
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "task.get",
+  "params": {
+   "taskId": "TSK-004"
+  },
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "task": {
+    "taskId": "TSK-004",
+    "taskCode": "CV-TEST-004",
+    "title": "Báo cáo tiến độ mẫu D",
+    "description": "Báo cáo định kỳ mẫu",
+    "status": "not_started",
+    "priority": "low",
+    "dueAt": "2026-10-30",
+    "overdue": false,
+    "archived": false,
+    "customer": {
+     "customerId": "CUS-001",
+     "code": "KH-TEST-001",
+     "name": "Khách hàng mẫu A"
+    },
+    "primary": {
+     "userId": "USR-006",
+     "name": "CBTD mẫu 03"
+    },
+    "collaborator": null,
+    "createdBy": {
+     "userId": "USR-002",
+     "name": "Ban giám đốc mẫu"
+    },
+    "createdAt": "2026-10-13T08:30:00Z",
+    "updatedAt": "2026-10-13T08:30:00Z",
+    "completedAt": null,
+    "approvedProgress": 0,
+    "pendingUpdates": 0
+   },
+   "updates": [],
+   "assignments": [
+    {
+     "assignmentId": "ASG-006",
+     "userId": "USR-006",
+     "name": "CBTD mẫu 03",
+     "role": "primary",
+     "assignedAt": "2026-10-13T08:30:00Z",
+     "active": true
+    }
+   ],
+   "can": {
+    "start": true,
+    "submitProgress": true,
+    "edit": true,
+    "transfer": true,
+    "archive": true,
+    "review": true
+   }
+  },
+  "error": null
+ },
+ {
+  "who": "cbtd01@example.com",
+  "action": "task.create",
+  "params": {
+   "title": "Việc mới của CBTD01",
+   "customerId": "CUS-001",
+   "primaryUserId": "cbtd02@example.com",
+   "dueAt": "2026-11-30"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "FORBIDDEN",
+   "message": "CBTD chỉ được tạo công việc do chính mình phụ trách chính.",
+   "details": null
+  }
+ },
+ {
+  "who": "cbtd01@example.com",
+  "action": "task.create",
+  "params": {
+   "title": "Việc mới của CBTD01",
+   "customerId": "CUS-001",
+   "dueAt": "2026-11-30",
+   "priority": "high",
+   "primaryUserId": "USR-004"
+  },
+  "requestId": "rqcreate-0001",
+  "ok": true,
+  "data": {
+   "task": {
+    "taskId": "TSK-005",
+    "taskCode": "CV-0005",
+    "title": "Việc mới của CBTD01",
+    "description": "",
+    "status": "not_started",
+    "priority": "high",
+    "dueAt": "2026-11-30",
+    "overdue": false,
+    "archived": false,
+    "customer": {
+     "customerId": "CUS-001",
+     "code": "KH-TEST-001",
+     "name": "Khách hàng mẫu A"
+    },
+    "primary": {
+     "userId": "USR-004",
+     "name": "CBTD mẫu 01"
+    },
+    "collaborator": null,
+    "createdBy": {
+     "userId": "USR-004",
+     "name": "CBTD mẫu 01"
+    },
+    "createdAt": "2026-10-13T12:00:00Z",
+    "updatedAt": "2026-10-13T12:00:00Z",
+    "completedAt": null,
+    "approvedProgress": 0,
+    "pendingUpdates": 0
+   },
+   "replayed": false
+  },
+  "error": null
+ },
+ {
+  "who": "cbtd01@example.com",
+  "action": "task.create",
+  "params": {
+   "title": "Việc mới của CBTD01",
+   "customerId": "CUS-001",
+   "dueAt": "2026-11-30",
+   "priority": "high"
+  },
+  "requestId": "rqcreate-0001",
+  "ok": true,
+  "data": {
+   "task": {
+    "taskId": "TSK-005",
+    "taskCode": "CV-0005",
+    "title": "Việc mới của CBTD01",
+    "description": "",
+    "status": "not_started",
+    "priority": "high",
+    "dueAt": "2026-11-30",
+    "overdue": false,
+    "archived": false,
+    "customer": {
+     "customerId": "CUS-001",
+     "code": "KH-TEST-001",
+     "name": "Khách hàng mẫu A"
+    },
+    "primary": {
+     "userId": "USR-004",
+     "name": "CBTD mẫu 01"
+    },
+    "collaborator": null,
+    "createdBy": {
+     "userId": "USR-004",
+     "name": "CBTD mẫu 01"
+    },
+    "createdAt": "2026-10-13T12:00:00Z",
+    "updatedAt": "2026-10-13T12:00:00Z",
+    "completedAt": null,
+    "approvedProgress": 0,
+    "pendingUpdates": 0
+   },
+   "replayed": true
+  },
+  "error": null
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "task.create",
+  "params": {
+   "title": "Việc của KSV",
+   "customerId": "CUS-002",
+   "primaryUserId": "cbtd01@example.com",
+   "collaboratorUserId": "cbtd01@example.com",
+   "dueAt": "2026-12-01"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "VALIDATION",
+   "message": "Người được giao phải là cán bộ tín dụng (CBTD) đang hoạt động.",
+   "details": {
+    "field": "primaryUserId"
+   }
+  }
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "task.create",
+  "params": {
+   "title": "Việc của KSV",
+   "customerId": "CUS-002",
+   "primaryUserId": "cbtd01@example.com",
+   "collaboratorUserId": "cbtd02@example.com",
+   "dueAt": "2025-01-01"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "VALIDATION",
+   "message": "Hạn xử lý không được nằm trong quá khứ.",
+   "details": {
+    "field": "dueAt"
+   }
+  }
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "task.create",
+  "params": {
+   "title": "",
+   "customerId": "CUS-002",
+   "primaryUserId": "cbtd01@example.com",
+   "dueAt": "2026-12-01"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "VALIDATION",
+   "message": "Tiêu đề là bắt buộc.",
+   "details": {
+    "field": "title"
+   }
+  }
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "task.create",
+  "params": {
+   "title": "Việc có người không phải CBTD",
+   "customerId": "CUS-002",
+   "primaryUserId": "bgd@example.com",
+   "dueAt": "2026-12-01"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "VALIDATION",
+   "message": "Người được giao phải là cán bộ tín dụng (CBTD) đang hoạt động.",
+   "details": {
+    "field": "primaryUserId"
+   }
+  }
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "task.create",
+  "params": {
+   "title": "Việc khách hàng sai",
+   "customerId": "CUS-404",
+   "primaryUserId": "cbtd01@example.com",
+   "dueAt": "2026-12-01"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "VALIDATION",
+   "message": "Khách hàng không tồn tại hoặc đã lưu trữ.",
+   "details": {
+    "field": "customerId"
+   }
+  }
+ },
+ {
+  "who": "bgd@example.com",
+  "action": "task.create",
+  "params": {
+   "title": "Việc của BGD",
+   "customerId": "CUS-003",
+   "primaryUserId": "cbtd03@example.com",
+   "dueAt": "2026-12-05",
+   "description": "Mô tả mẫu"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "VALIDATION",
+   "message": "Người được giao phải là cán bộ tín dụng (CBTD) đang hoạt động.",
+   "details": {
+    "field": "primaryUserId"
+   }
+  }
+ },
+ {
+  "who": "cbtd03@example.com",
+  "action": "task.update",
+  "params": {
+   "taskId": "TSK-004",
+   "title": "Đổi tiêu đề",
+   "priority": "low"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "FORBIDDEN",
+   "message": "Bạn không có quyền thực hiện thao tác này.",
+   "details": {
+    "permission": "task.update"
+   }
+  }
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "task.update",
+  "params": {
+   "taskId": "TSK-004",
+   "title": "Báo cáo tiến độ mẫu D (cập nhật)",
+   "priority": "high",
+   "dueAt": "2026-11-15"
+  },
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "task": {
+    "taskId": "TSK-004",
+    "taskCode": "CV-TEST-004",
+    "title": "Báo cáo tiến độ mẫu D (cập nhật)",
+    "description": "Báo cáo định kỳ mẫu",
+    "status": "not_started",
+    "priority": "high",
+    "dueAt": "2026-11-15",
+    "overdue": false,
+    "archived": false,
+    "customer": {
+     "customerId": "CUS-001",
+     "code": "KH-TEST-001",
+     "name": "Khách hàng mẫu A"
+    },
+    "primary": {
+     "userId": "USR-006",
+     "name": "CBTD mẫu 03"
+    },
+    "collaborator": null,
+    "createdBy": {
+     "userId": "USR-002",
+     "name": "Ban giám đốc mẫu"
+    },
+    "createdAt": "2026-10-13T08:30:00Z",
+    "updatedAt": "2026-10-13T12:00:00Z",
+    "completedAt": null,
+    "approvedProgress": 0,
+    "pendingUpdates": 0
+   }
+  },
+  "error": null
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "task.update",
+  "params": {
+   "taskId": "TSK-004",
+   "status": "completed"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "VALIDATION",
+   "message": "Trạng thái \"Đã hoàn thành\" chỉ được đặt khi duyệt tiến độ 100%.",
+   "details": {
+    "field": "status"
+   }
+  }
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "task.update",
+  "params": {
+   "taskId": "TSK-004"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "VALIDATION",
+   "message": "Không có thay đổi nào để lưu.",
+   "details": {
+    "field": null
+   }
+  }
+ },
+ {
+  "who": "cbtd01@example.com",
+  "action": "task.start",
+  "params": {
+   "taskId": "TSK-002"
+  },
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "task": {
+    "taskId": "TSK-002",
+    "taskCode": "CV-TEST-002",
+    "title": "Kiểm tra tài sản bảo đảm mẫu B",
+    "description": "Kiểm tra tài sản theo danh mục mẫu",
+    "status": "in_progress",
+    "priority": "normal",
+    "dueAt": "2026-10-25",
+    "overdue": false,
+    "archived": false,
+    "customer": {
+     "customerId": "CUS-002",
+     "code": "KH-TEST-002",
+     "name": "Công ty mẫu B"
+    },
+    "primary": {
+     "userId": "USR-004",
+     "name": "CBTD mẫu 01"
+    },
+    "collaborator": null,
+    "createdBy": {
+     "userId": "USR-004",
+     "name": "CBTD mẫu 01"
+    },
+    "createdAt": "2026-10-13T08:20:00Z",
+    "updatedAt": "2026-10-13T12:00:00Z",
+    "completedAt": null,
+    "approvedProgress": 0,
+    "pendingUpdates": 0
+   }
+  },
+  "error": null
+ },
+ {
+  "who": "cbtd01@example.com",
+  "action": "task.start",
+  "params": {
+   "taskId": "TSK-002"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "CONFLICT",
+   "message": "Công việc đã được bắt đầu.",
+   "details": null
+  }
+ },
+ {
+  "who": "cbtd02@example.com",
+  "action": "task.start",
+  "params": {
+   "taskId": "TSK-002"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "NOT_FOUND",
+   "message": "Không tìm thấy công việc.",
+   "details": null
+  }
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "task.setCollaborator",
+  "params": {
+   "taskId": "TSK-002",
+   "userId": "cbtd03@example.com"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "VALIDATION",
+   "message": "Người được giao phải là cán bộ tín dụng (CBTD) đang hoạt động.",
+   "details": {
+    "field": "userId"
+   }
+  }
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "task.setCollaborator",
+  "params": {
+   "taskId": "TSK-002",
+   "userId": "cbtd01@example.com"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "VALIDATION",
+   "message": "Người được giao phải là cán bộ tín dụng (CBTD) đang hoạt động.",
+   "details": {
+    "field": "userId"
+   }
+  }
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "task.setCollaborator",
+  "params": {
+   "taskId": "TSK-002"
+  },
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "task": {
+    "taskId": "TSK-002",
+    "taskCode": "CV-TEST-002",
+    "title": "Kiểm tra tài sản bảo đảm mẫu B",
+    "description": "Kiểm tra tài sản theo danh mục mẫu",
+    "status": "in_progress",
+    "priority": "normal",
+    "dueAt": "2026-10-25",
+    "overdue": false,
+    "archived": false,
+    "customer": {
+     "customerId": "CUS-002",
+     "code": "KH-TEST-002",
+     "name": "Công ty mẫu B"
+    },
+    "primary": {
+     "userId": "USR-004",
+     "name": "CBTD mẫu 01"
+    },
+    "collaborator": null,
+    "createdBy": {
+     "userId": "USR-004",
+     "name": "CBTD mẫu 01"
+    },
+    "createdAt": "2026-10-13T08:20:00Z",
+    "updatedAt": "2026-10-13T12:00:00Z",
+    "completedAt": null,
+    "approvedProgress": 0,
+    "pendingUpdates": 0
+   }
+  },
+  "error": null
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "task.transfer",
+  "params": {
+   "taskId": "TSK-004",
+   "newPrimaryUserId": "cbtd01@example.com"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "VALIDATION",
+   "message": "Người được giao phải là cán bộ tín dụng (CBTD) đang hoạt động.",
+   "details": {
+    "field": "newPrimaryUserId"
+   }
+  }
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "task.transfer",
+  "params": {
+   "taskId": "TSK-004",
+   "newPrimaryUserId": "cbtd03@example.com"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "VALIDATION",
+   "message": "Người được giao phải là cán bộ tín dụng (CBTD) đang hoạt động.",
+   "details": {
+    "field": "newPrimaryUserId"
+   }
+  }
+ },
+ {
+  "who": "cbtd01@example.com",
+  "action": "task.transfer",
+  "params": {
+   "taskId": "TSK-004",
+   "newPrimaryUserId": "cbtd01@example.com"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "FORBIDDEN",
+   "message": "Bạn không có quyền thực hiện thao tác này.",
+   "details": {
+    "permission": "task.transfer"
+   }
+  }
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "task.archive",
+  "params": {
+   "taskId": "TSK-004",
+   "archived": true
+  },
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "task": {
+    "taskId": "TSK-004",
+    "taskCode": "CV-TEST-004",
+    "title": "Báo cáo tiến độ mẫu D (cập nhật)",
+    "description": "Báo cáo định kỳ mẫu",
+    "status": "not_started",
+    "priority": "high",
+    "dueAt": "2026-11-15",
+    "overdue": false,
+    "archived": true,
+    "customer": {
+     "customerId": "CUS-001",
+     "code": "KH-TEST-001",
+     "name": "Khách hàng mẫu A"
+    },
+    "primary": {
+     "userId": "USR-006",
+     "name": "CBTD mẫu 03"
+    },
+    "collaborator": null,
+    "createdBy": {
+     "userId": "USR-002",
+     "name": "Ban giám đốc mẫu"
+    },
+    "createdAt": "2026-10-13T08:30:00Z",
+    "updatedAt": "2026-10-13T12:00:00Z",
+    "completedAt": null,
+    "approvedProgress": 0,
+    "pendingUpdates": 0
+   }
+  },
+  "error": null
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "task.archive",
+  "params": {
+   "taskId": "TSK-004",
+   "archived": false
+  },
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "task": {
+    "taskId": "TSK-004",
+    "taskCode": "CV-TEST-004",
+    "title": "Báo cáo tiến độ mẫu D (cập nhật)",
+    "description": "Báo cáo định kỳ mẫu",
+    "status": "not_started",
+    "priority": "high",
+    "dueAt": "2026-11-15",
+    "overdue": false,
+    "archived": false,
+    "customer": {
+     "customerId": "CUS-001",
+     "code": "KH-TEST-001",
+     "name": "Khách hàng mẫu A"
+    },
+    "primary": {
+     "userId": "USR-006",
+     "name": "CBTD mẫu 03"
+    },
+    "collaborator": null,
+    "createdBy": {
+     "userId": "USR-002",
+     "name": "Ban giám đốc mẫu"
+    },
+    "createdAt": "2026-10-13T08:30:00Z",
+    "updatedAt": "2026-10-13T12:00:00Z",
+    "completedAt": null,
+    "approvedProgress": 0,
+    "pendingUpdates": 0
+   }
+  },
+  "error": null
+ },
+ {
+  "who": "cbtd01@example.com",
+  "action": "progress.submit",
+  "params": {
+   "taskId": "TSK-001",
+   "progressPct": 70,
+   "narrative": "Đã hoàn tất đối chiếu hồ sơ mẫu"
+  },
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "update": {
+    "updateId": "UPD-005",
+    "taskId": "TSK-001",
+    "progressPct": 70,
+    "narrative": "Đã hoàn tất đối chiếu hồ sơ mẫu",
+    "submittedBy": {
+     "userId": "USR-004",
+     "name": "CBTD mẫu 01"
+    },
+    "submittedAt": "2026-10-13T12:00:00Z",
+    "reviewStatus": "pending",
+    "reviewedBy": null,
+    "reviewedAt": null,
+    "reviewComment": ""
+   },
+   "replayed": false
+  },
+  "error": null
+ },
+ {
+  "who": "cbtd01@example.com",
+  "action": "progress.submit",
+  "params": {
+   "taskId": "TSK-001",
+   "progressPct": 70,
+   "narrative": "Đã hoàn tất đối chiếu hồ sơ mẫu"
+  },
+  "requestId": "rqsubmit-0001",
+  "ok": true,
+  "data": {
+   "update": {
+    "updateId": "UPD-006",
+    "taskId": "TSK-001",
+    "progressPct": 70,
+    "narrative": "Đã hoàn tất đối chiếu hồ sơ mẫu",
+    "submittedBy": {
+     "userId": "USR-004",
+     "name": "CBTD mẫu 01"
+    },
+    "submittedAt": "2026-10-13T12:00:00Z",
+    "reviewStatus": "pending",
+    "reviewedBy": null,
+    "reviewedAt": null,
+    "reviewComment": ""
+   },
+   "replayed": false
+  },
+  "error": null
+ },
+ {
+  "who": "cbtd01@example.com",
+  "action": "progress.submit",
+  "params": {
+   "taskId": "TSK-001",
+   "progressPct": 70,
+   "narrative": "Đã hoàn tất đối chiếu hồ sơ mẫu"
+  },
+  "requestId": "rqsubmit-0001",
+  "ok": true,
+  "data": {
+   "update": {
+    "updateId": "UPD-006",
+    "taskId": "TSK-001",
+    "progressPct": 70,
+    "narrative": "Đã hoàn tất đối chiếu hồ sơ mẫu",
+    "submittedBy": {
+     "userId": "USR-004",
+     "name": "CBTD mẫu 01"
+    },
+    "submittedAt": "2026-10-13T12:00:00Z",
+    "reviewStatus": "pending",
+    "reviewedBy": null,
+    "reviewedAt": null,
+    "reviewComment": ""
+   },
+   "replayed": true
+  },
+  "error": null
+ },
+ {
+  "who": "cbtd01@example.com",
+  "action": "progress.submit",
+  "params": {
+   "taskId": "TSK-001",
+   "progressPct": "50%",
+   "narrative": "Sai định dạng tiến độ"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "VALIDATION",
+   "message": "Tiến độ phải là số nguyên từ 0 đến 100.",
+   "details": {
+    "field": "progressPct"
+   }
+  }
+ },
+ {
+  "who": "cbtd01@example.com",
+  "action": "progress.submit",
+  "params": {
+   "taskId": "TSK-001",
+   "progressPct": 40,
+   "narrative": "ngắn"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "VALIDATION",
+   "message": "Nội dung diễn giải tối thiểu 5 ký tự.",
+   "details": {
+    "field": "narrative"
+   }
+  }
+ },
+ {
+  "who": "cbtd03@example.com",
+  "action": "progress.submit",
+  "params": {
+   "taskId": "TSK-001",
+   "progressPct": 40,
+   "narrative": "Không được giao việc này"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "NOT_FOUND",
+   "message": "Không tìm thấy công việc.",
+   "details": null
+  }
+ },
+ {
+  "who": "cbtd01@example.com",
+  "action": "progress.submit",
+  "params": {
+   "taskId": "TSK-003",
+   "progressPct": 90,
+   "narrative": "Đã hoàn thành công việc"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "CONFLICT",
+   "message": "Công việc đã hoàn thành, không nhận thêm tiến độ.",
+   "details": null
+  }
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "progress.pending",
+  "params": {},
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "items": [
+    {
+     "updateId": "UPD-002",
+     "taskId": "TSK-001",
+     "progressPct": 60,
+     "narrative": "Đang đối chiếu hồ sơ mẫu",
+     "submittedBy": {
+      "userId": "USR-005",
+      "name": "CBTD mẫu 02"
+     },
+     "submittedAt": "2026-10-13T10:00:00Z",
+     "reviewStatus": "pending",
+     "reviewedBy": null,
+     "reviewedAt": null,
+     "reviewComment": "",
+     "task": {
+      "taskId": "TSK-001",
+      "taskCode": "CV-TEST-001",
+      "title": "Thẩm định hồ sơ mẫu A",
+      "dueAt": "2026-10-20"
+     },
+     "ownSubmission": false
+    },
+    {
+     "updateId": "UPD-005",
+     "taskId": "TSK-001",
+     "progressPct": 70,
+     "narrative": "Đã hoàn tất đối chiếu hồ sơ mẫu",
+     "submittedBy": {
+      "userId": "USR-004",
+      "name": "CBTD mẫu 01"
+     },
+     "submittedAt": "2026-10-13T12:00:00Z",
+     "reviewStatus": "pending",
+     "reviewedBy": null,
+     "reviewedAt": null,
+     "reviewComment": "",
+     "task": {
+      "taskId": "TSK-001",
+      "taskCode": "CV-TEST-001",
+      "title": "Thẩm định hồ sơ mẫu A",
+      "dueAt": "2026-10-20"
+     },
+     "ownSubmission": false
+    },
+    {
+     "updateId": "UPD-006",
+     "taskId": "TSK-001",
+     "progressPct": 70,
+     "narrative": "Đã hoàn tất đối chiếu hồ sơ mẫu",
+     "submittedBy": {
+      "userId": "USR-004",
+      "name": "CBTD mẫu 01"
+     },
+     "submittedAt": "2026-10-13T12:00:00Z",
+     "reviewStatus": "pending",
+     "reviewedBy": null,
+     "reviewedAt": null,
+     "reviewComment": "",
+     "task": {
+      "taskId": "TSK-001",
+      "taskCode": "CV-TEST-001",
+      "title": "Thẩm định hồ sơ mẫu A",
+      "dueAt": "2026-10-20"
+     },
+     "ownSubmission": false
+    }
+   ],
+   "page": 1,
+   "pageSize": 20,
+   "total": 3
+  },
+  "error": null
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "progress.pending",
+  "params": {
+   "page": 1,
+   "pageSize": 1
+  },
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "items": [
+    {
+     "updateId": "UPD-002",
+     "taskId": "TSK-001",
+     "progressPct": 60,
+     "narrative": "Đang đối chiếu hồ sơ mẫu",
+     "submittedBy": {
+      "userId": "USR-005",
+      "name": "CBTD mẫu 02"
+     },
+     "submittedAt": "2026-10-13T10:00:00Z",
+     "reviewStatus": "pending",
+     "reviewedBy": null,
+     "reviewedAt": null,
+     "reviewComment": "",
+     "task": {
+      "taskId": "TSK-001",
+      "taskCode": "CV-TEST-001",
+      "title": "Thẩm định hồ sơ mẫu A",
+      "dueAt": "2026-10-20"
+     },
+     "ownSubmission": false
+    }
+   ],
+   "page": 1,
+   "pageSize": 1,
+   "total": 3
+  },
+  "error": null
+ },
+ {
+  "who": "cbtd01@example.com",
+  "action": "progress.pending",
+  "params": {},
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "FORBIDDEN",
+   "message": "Bạn không có quyền thực hiện thao tác này.",
+   "details": {
+    "permission": "progress.review"
+   }
+  }
+ },
+ {
+  "who": "cbtd01@example.com",
+  "action": "progress.review",
+  "params": {
+   "updateId": "UPD-005",
+   "decision": "approve"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "FORBIDDEN",
+   "message": "Bạn không có quyền thực hiện thao tác này.",
+   "details": {
+    "permission": "progress.review"
+   }
+  }
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "progress.review",
+  "params": {
+   "updateId": "UPD-005",
+   "decision": "approve"
+  },
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "update": {
+    "updateId": "UPD-005",
+    "taskId": "TSK-001",
+    "progressPct": 70,
+    "narrative": "Đã hoàn tất đối chiếu hồ sơ mẫu",
+    "submittedBy": {
+     "userId": "USR-004",
+     "name": "CBTD mẫu 01"
+    },
+    "submittedAt": "2026-10-13T12:00:00Z",
+    "reviewStatus": "approved",
+    "reviewedBy": {
+     "userId": "USR-003",
+     "name": "KSV mẫu 01"
+    },
+    "reviewedAt": "2026-10-13T12:00:00Z",
+    "reviewComment": ""
+   },
+   "task": {
+    "taskId": "TSK-001",
+    "taskCode": "CV-TEST-001",
+    "title": "Thẩm định hồ sơ mẫu A",
+    "description": "Thu thập và kiểm tra hồ sơ mẫu",
+    "status": "in_progress",
+    "priority": "high",
+    "dueAt": "2026-10-20",
+    "overdue": false,
+    "archived": false,
+    "customer": {
+     "customerId": "CUS-001",
+     "code": "KH-TEST-001",
+     "name": "Khách hàng mẫu A"
+    },
+    "primary": {
+     "userId": "USR-004",
+     "name": "CBTD mẫu 01"
+    },
+    "collaborator": {
+     "userId": "USR-005",
+     "name": "CBTD mẫu 02"
+    },
+    "createdBy": {
+     "userId": "USR-003",
+     "name": "KSV mẫu 01"
+    },
+    "createdAt": "2026-10-13T08:10:00Z",
+    "updatedAt": "2026-10-13T09:30:00Z",
+    "completedAt": null,
+    "approvedProgress": 70,
+    "pendingUpdates": 2
+   },
+   "replayed": false
+  },
+  "error": null
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "progress.review",
+  "params": {
+   "updateId": "UPD-005",
+   "decision": "approve"
+  },
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "update": {
+    "updateId": "UPD-005",
+    "taskId": "TSK-001",
+    "progressPct": 70,
+    "narrative": "Đã hoàn tất đối chiếu hồ sơ mẫu",
+    "submittedBy": {
+     "userId": "USR-004",
+     "name": "CBTD mẫu 01"
+    },
+    "submittedAt": "2026-10-13T12:00:00Z",
+    "reviewStatus": "approved",
+    "reviewedBy": {
+     "userId": "USR-003",
+     "name": "KSV mẫu 01"
+    },
+    "reviewedAt": "2026-10-13T12:00:00Z",
+    "reviewComment": ""
+   },
+   "task": {
+    "taskId": "TSK-001",
+    "taskCode": "CV-TEST-001",
+    "title": "Thẩm định hồ sơ mẫu A",
+    "description": "Thu thập và kiểm tra hồ sơ mẫu",
+    "status": "in_progress",
+    "priority": "high",
+    "dueAt": "2026-10-20",
+    "overdue": false,
+    "archived": false,
+    "customer": {
+     "customerId": "CUS-001",
+     "code": "KH-TEST-001",
+     "name": "Khách hàng mẫu A"
+    },
+    "primary": {
+     "userId": "USR-004",
+     "name": "CBTD mẫu 01"
+    },
+    "collaborator": {
+     "userId": "USR-005",
+     "name": "CBTD mẫu 02"
+    },
+    "createdBy": {
+     "userId": "USR-003",
+     "name": "KSV mẫu 01"
+    },
+    "createdAt": "2026-10-13T08:10:00Z",
+    "updatedAt": "2026-10-13T09:30:00Z",
+    "completedAt": null,
+    "approvedProgress": 70,
+    "pendingUpdates": 2
+   },
+   "replayed": true
+  },
+  "error": null
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "progress.review",
+  "params": {
+   "updateId": "UPD-006",
+   "decision": "reject"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "VALIDATION",
+   "message": "Lý do là bắt buộc.",
+   "details": {
+    "field": "comment"
+   }
+  }
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "progress.review",
+  "params": {
+   "updateId": "UPD-006",
+   "decision": "reject",
+   "comment": "Thiếu chứng từ mẫu"
+  },
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "update": {
+    "updateId": "UPD-006",
+    "taskId": "TSK-001",
+    "progressPct": 70,
+    "narrative": "Đã hoàn tất đối chiếu hồ sơ mẫu",
+    "submittedBy": {
+     "userId": "USR-004",
+     "name": "CBTD mẫu 01"
+    },
+    "submittedAt": "2026-10-13T12:00:00Z",
+    "reviewStatus": "rejected",
+    "reviewedBy": {
+     "userId": "USR-003",
+     "name": "KSV mẫu 01"
+    },
+    "reviewedAt": "2026-10-13T12:00:00Z",
+    "reviewComment": "Thiếu chứng từ mẫu"
+   },
+   "task": {
+    "taskId": "TSK-001",
+    "taskCode": "CV-TEST-001",
+    "title": "Thẩm định hồ sơ mẫu A",
+    "description": "Thu thập và kiểm tra hồ sơ mẫu",
+    "status": "in_progress",
+    "priority": "high",
+    "dueAt": "2026-10-20",
+    "overdue": false,
+    "archived": false,
+    "customer": {
+     "customerId": "CUS-001",
+     "code": "KH-TEST-001",
+     "name": "Khách hàng mẫu A"
+    },
+    "primary": {
+     "userId": "USR-004",
+     "name": "CBTD mẫu 01"
+    },
+    "collaborator": {
+     "userId": "USR-005",
+     "name": "CBTD mẫu 02"
+    },
+    "createdBy": {
+     "userId": "USR-003",
+     "name": "KSV mẫu 01"
+    },
+    "createdAt": "2026-10-13T08:10:00Z",
+    "updatedAt": "2026-10-13T09:30:00Z",
+    "completedAt": null,
+    "approvedProgress": 70,
+    "pendingUpdates": 1
+   },
+   "replayed": false
+  },
+  "error": null
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "progress.review",
+  "params": {
+   "updateId": "UPD-006",
+   "decision": "approve"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "CONFLICT",
+   "message": "Báo cáo này đã được xử lý trước đó.",
+   "details": null
+  }
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "progress.review",
+  "params": {
+   "updateId": "UPD-404",
+   "decision": "approve"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "NOT_FOUND",
+   "message": "Không tìm thấy báo cáo tiến độ.",
+   "details": null
+  }
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "progress.review",
+  "params": {
+   "updateId": "UPD-002",
+   "decision": "maybe"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "VALIDATION",
+   "message": "Quyết định không hợp lệ.",
+   "details": {
+    "field": "decision"
+   }
+  }
+ },
+ {
+  "who": "admin@example.com",
+  "action": "progress.review",
+  "params": {
+   "updateId": "UPD-002",
+   "decision": "approve"
+  },
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "update": {
+    "updateId": "UPD-002",
+    "taskId": "TSK-001",
+    "progressPct": 60,
+    "narrative": "Đang đối chiếu hồ sơ mẫu",
+    "submittedBy": {
+     "userId": "USR-005",
+     "name": "CBTD mẫu 02"
+    },
+    "submittedAt": "2026-10-13T10:00:00Z",
+    "reviewStatus": "approved",
+    "reviewedBy": {
+     "userId": "USR-001",
+     "name": "Quản trị mẫu"
+    },
+    "reviewedAt": "2026-10-13T12:00:00Z",
+    "reviewComment": ""
+   },
+   "task": {
+    "taskId": "TSK-001",
+    "taskCode": "CV-TEST-001",
+    "title": "Thẩm định hồ sơ mẫu A",
+    "description": "Thu thập và kiểm tra hồ sơ mẫu",
+    "status": "in_progress",
+    "priority": "high",
+    "dueAt": "2026-10-20",
+    "overdue": false,
+    "archived": false,
+    "customer": {
+     "customerId": "CUS-001",
+     "code": "KH-TEST-001",
+     "name": "Khách hàng mẫu A"
+    },
+    "primary": {
+     "userId": "USR-004",
+     "name": "CBTD mẫu 01"
+    },
+    "collaborator": {
+     "userId": "USR-005",
+     "name": "CBTD mẫu 02"
+    },
+    "createdBy": {
+     "userId": "USR-003",
+     "name": "KSV mẫu 01"
+    },
+    "createdAt": "2026-10-13T08:10:00Z",
+    "updatedAt": "2026-10-13T09:30:00Z",
+    "completedAt": null,
+    "approvedProgress": 70,
+    "pendingUpdates": 0
+   },
+   "replayed": false
+  },
+  "error": null
+ },
+ {
+  "who": "cbtd01@example.com",
+  "action": "customer.list",
+  "params": {
+   "q": "mau"
+  },
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "items": [
+    {
+     "customerId": "CUS-002",
+     "customerCode": "KH-TEST-002",
+     "name": "Công ty mẫu B",
+     "type": "business",
+     "phone": "0900000002",
+     "status": "new",
+     "companyRepresentative": "Người đại diện mẫu B",
+     "archived": false,
+     "createdAt": "2026-10-13T07:52:00Z",
+     "updatedAt": "2026-10-13T07:52:00Z"
+    },
+    {
+     "customerId": "CUS-001",
+     "customerCode": "KH-TEST-001",
+     "name": "Khách hàng mẫu A",
+     "type": "personal",
+     "phone": "0900000001",
+     "status": "managed",
+     "companyRepresentative": "",
+     "archived": false,
+     "createdAt": "2026-10-13T07:52:00Z",
+     "updatedAt": "2026-10-13T07:52:00Z"
+    },
+    {
+     "customerId": "CUS-003",
+     "customerCode": "KH-TEST-003",
+     "name": "Khách hàng mẫu C",
+     "type": "personal",
+     "phone": "0900000003",
+     "status": "managed",
+     "companyRepresentative": "",
+     "archived": false,
+     "createdAt": "2026-10-13T07:52:00Z",
+     "updatedAt": "2026-10-13T07:52:00Z"
+    }
+   ],
+   "page": 1,
+   "pageSize": 20,
+   "total": 3
+  },
+  "error": null
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "customer.list",
+  "params": {
+   "q": "mau",
+   "type": "business",
+   "page": 1,
+   "pageSize": 5
+  },
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "items": [
+    {
+     "customerId": "CUS-002",
+     "customerCode": "KH-TEST-002",
+     "name": "Công ty mẫu B",
+     "type": "business",
+     "phone": "0900000002",
+     "status": "new",
+     "companyRepresentative": "Người đại diện mẫu B",
+     "archived": false,
+     "createdAt": "2026-10-13T07:52:00Z",
+     "updatedAt": "2026-10-13T07:52:00Z"
+    }
+   ],
+   "page": 1,
+   "pageSize": 5,
+   "total": 1
+  },
+  "error": null
+ },
+ {
+  "who": "cbtd02@example.com",
+  "action": "customer.list",
+  "params": {},
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "items": [
+    {
+     "customerId": "CUS-001",
+     "customerCode": "KH-TEST-001",
+     "name": "Khách hàng mẫu A",
+     "type": "personal",
+     "phone": "0900000001",
+     "status": "managed",
+     "companyRepresentative": "",
+     "archived": false,
+     "createdAt": "2026-10-13T07:52:00Z",
+     "updatedAt": "2026-10-13T07:52:00Z"
+    }
+   ],
+   "page": 1,
+   "pageSize": 20,
+   "total": 1
+  },
+  "error": null
+ },
+ {
+  "who": "cbtd03@example.com",
+  "action": "customer.get",
+  "params": {
+   "customerId": "CUS-003"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "NOT_FOUND",
+   "message": "Không tìm thấy khách hàng.",
+   "details": null
+  }
+ },
+ {
+  "who": "cbtd01@example.com",
+  "action": "customer.get",
+  "params": {
+   "customerId": "CUS-001"
+  },
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "customer": {
+    "customerId": "CUS-001",
+    "customerCode": "KH-TEST-001",
+    "name": "Khách hàng mẫu A",
+    "type": "personal",
+    "phone": "0900000001",
+    "status": "managed",
+    "companyRepresentative": "",
+    "archived": false,
+    "createdAt": "2026-10-13T07:52:00Z",
+    "updatedAt": "2026-10-13T07:52:00Z"
+   },
+   "tasks": [
+    {
+     "taskId": "TSK-001",
+     "taskCode": "CV-TEST-001",
+     "title": "Thẩm định hồ sơ mẫu A",
+     "description": "Thu thập và kiểm tra hồ sơ mẫu",
+     "status": "in_progress",
+     "priority": "high",
+     "dueAt": "2026-10-20",
+     "overdue": false,
+     "archived": false,
+     "customer": {
+      "customerId": "CUS-001",
+      "code": "KH-TEST-001",
+      "name": "Khách hàng mẫu A"
+     },
+     "primary": {
+      "userId": "USR-004",
+      "name": "CBTD mẫu 01"
+     },
+     "collaborator": {
+      "userId": "USR-005",
+      "name": "CBTD mẫu 02"
+     },
+     "createdBy": {
+      "userId": "USR-003",
+      "name": "KSV mẫu 01"
+     },
+     "createdAt": "2026-10-13T08:10:00Z",
+     "updatedAt": "2026-10-13T09:30:00Z",
+     "completedAt": null,
+     "approvedProgress": 70,
+     "pendingUpdates": 0
+    },
+    {
+     "taskId": "TSK-005",
+     "taskCode": "CV-0005",
+     "title": "Việc mới của CBTD01",
+     "description": "",
+     "status": "not_started",
+     "priority": "high",
+     "dueAt": "2026-11-30",
+     "overdue": false,
+     "archived": false,
+     "customer": {
+      "customerId": "CUS-001",
+      "code": "KH-TEST-001",
+      "name": "Khách hàng mẫu A"
+     },
+     "primary": {
+      "userId": "USR-004",
+      "name": "CBTD mẫu 01"
+     },
+     "collaborator": null,
+     "createdBy": {
+      "userId": "USR-004",
+      "name": "CBTD mẫu 01"
+     },
+     "createdAt": "2026-10-13T12:00:00Z",
+     "updatedAt": "2026-10-13T12:00:00Z",
+     "completedAt": null,
+     "approvedProgress": 0,
+     "pendingUpdates": 0
+    }
+   ]
+  },
+  "error": null
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "customer.create",
+  "params": {
+   "name": "Khách hàng mới",
+   "type": "personal",
+   "phone": "0901112233",
+   "status": "new"
+  },
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "customer": {
+    "customerId": "CUS-004",
+    "customerCode": "KH-0004",
+    "name": "Khách hàng mới",
+    "type": "personal",
+    "phone": "0901112233",
+    "status": "new",
+    "companyRepresentative": "",
+    "archived": false,
+    "createdAt": "2026-10-13T12:00:00Z",
+    "updatedAt": "2026-10-13T12:00:00Z"
+   },
+   "replayed": false
+  },
+  "error": null
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "customer.create",
+  "params": {
+   "name": "Công ty mới",
+   "type": "business",
+   "phone": "0901112244",
+   "companyRepresentative": "Người đại diện",
+   "customerCode": "DN-NEW-01"
+  },
+  "requestId": "rqcustcreate-01",
+  "ok": true,
+  "data": {
+   "customer": {
+    "customerId": "CUS-005",
+    "customerCode": "DN-NEW-01",
+    "name": "Công ty mới",
+    "type": "business",
+    "phone": "0901112244",
+    "status": "new",
+    "companyRepresentative": "Người đại diện",
+    "archived": false,
+    "createdAt": "2026-10-13T12:00:00Z",
+    "updatedAt": "2026-10-13T12:00:00Z"
+   },
+   "replayed": false
+  },
+  "error": null
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "customer.create",
+  "params": {
+   "name": "Công ty mới",
+   "type": "business",
+   "phone": "0901112244",
+   "companyRepresentative": "Người đại diện",
+   "customerCode": "DN-NEW-01"
+  },
+  "requestId": "rqcustcreate-01",
+  "ok": true,
+  "data": {
+   "customer": {
+    "customerId": "CUS-005",
+    "customerCode": "DN-NEW-01",
+    "name": "Công ty mới",
+    "type": "business",
+    "phone": "0901112244",
+    "status": "new",
+    "companyRepresentative": "Người đại diện",
+    "archived": false,
+    "createdAt": "2026-10-13T12:00:00Z",
+    "updatedAt": "2026-10-13T12:00:00Z"
+   },
+   "replayed": true
+  },
+  "error": null
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "customer.create",
+  "params": {
+   "name": "Cá nhân sai",
+   "type": "personal",
+   "phone": "0901112255",
+   "companyRepresentative": "Không được có"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "VALIDATION",
+   "message": "Chỉ khách hàng doanh nghiệp mới có người đại diện công ty.",
+   "details": {
+    "field": "companyRepresentative"
+   }
+  }
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "customer.create",
+  "params": {
+   "name": "Trùng mã",
+   "type": "personal",
+   "phone": "0901112266",
+   "customerCode": "DN-NEW-01"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "VALIDATION",
+   "message": "Mã khách hàng đã tồn tại.",
+   "details": {
+    "field": "customerCode"
+   }
+  }
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "customer.create",
+  "params": {
+   "name": "SĐT sai",
+   "type": "personal",
+   "phone": "abc"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "VALIDATION",
+   "message": "Số điện thoại không đúng định dạng.",
+   "details": {
+    "field": "phone"
+   }
+  }
+ },
+ {
+  "who": "cbtd01@example.com",
+  "action": "customer.create",
+  "params": {
+   "name": "CBTD không được tạo",
+   "type": "personal",
+   "phone": "0901112277"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "FORBIDDEN",
+   "message": "Bạn không có quyền thực hiện thao tác này.",
+   "details": {
+    "permission": "customer.maintain"
+   }
+  }
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "customer.update",
+  "params": {
+   "customerId": "CUS-002",
+   "phone": "0909998877",
+   "companyRepresentative": "Người đại diện đổi"
+  },
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "customer": {
+    "customerId": "CUS-002",
+    "customerCode": "KH-TEST-002",
+    "name": "Công ty mẫu B",
+    "type": "business",
+    "phone": "0909998877",
+    "status": "new",
+    "companyRepresentative": "Người đại diện đổi",
+    "archived": false,
+    "createdAt": "2026-10-13T07:52:00Z",
+    "updatedAt": "2026-10-13T12:00:00Z"
+   }
+  },
+  "error": null
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "customer.update",
+  "params": {
+   "customerId": "CUS-001",
+   "type": "business",
+   "companyRepresentative": "Đại diện A"
+  },
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "customer": {
+    "customerId": "CUS-001",
+    "customerCode": "KH-TEST-001",
+    "name": "Khách hàng mẫu A",
+    "type": "business",
+    "phone": "0900000001",
+    "status": "managed",
+    "companyRepresentative": "Đại diện A",
+    "archived": false,
+    "createdAt": "2026-10-13T07:52:00Z",
+    "updatedAt": "2026-10-13T12:00:00Z"
+   }
+  },
+  "error": null
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "customer.update",
+  "params": {
+   "customerId": "CUS-001",
+   "type": "personal"
+  },
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "customer": {
+    "customerId": "CUS-001",
+    "customerCode": "KH-TEST-001",
+    "name": "Khách hàng mẫu A",
+    "type": "personal",
+    "phone": "0900000001",
+    "status": "managed",
+    "companyRepresentative": "",
+    "archived": false,
+    "createdAt": "2026-10-13T07:52:00Z",
+    "updatedAt": "2026-10-13T12:00:00Z"
+   }
+  },
+  "error": null
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "customer.update",
+  "params": {
+   "customerId": "CUS-001"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "VALIDATION",
+   "message": "Không có thay đổi nào để lưu.",
+   "details": {
+    "field": null
+   }
+  }
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "customer.update",
+  "params": {
+   "customerId": "CUS-404",
+   "name": "Không có"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "NOT_FOUND",
+   "message": "Không tìm thấy khách hàng.",
+   "details": null
+  }
+ },
+ {
+  "who": "cbtd01@example.com",
+  "action": "customer.update",
+  "params": {
+   "customerId": "CUS-001",
+   "name": "CBTD không được sửa"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "FORBIDDEN",
+   "message": "Bạn không có quyền thực hiện thao tác này.",
+   "details": {
+    "permission": "customer.maintain"
+   }
+  }
+ },
+ {
+  "who": "admin@example.com",
+  "action": "customer.archive",
+  "params": {
+   "customerId": "CUS-002",
+   "archived": true
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "CONFLICT",
+   "message": "Khách hàng còn 1 công việc chưa hoàn thành, không thể lưu trữ.",
+   "details": null
+  }
+ },
+ {
+  "who": "admin@example.com",
+  "action": "customer.archive",
+  "params": {
+   "customerId": "CUS-001",
+   "archived": true
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "CONFLICT",
+   "message": "Khách hàng còn 3 công việc chưa hoàn thành, không thể lưu trữ.",
+   "details": null
+  }
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "customer.archive",
+  "params": {
+   "customerId": "CUS-003",
+   "archived": true
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "FORBIDDEN",
+   "message": "Bạn không có quyền thực hiện thao tác này.",
+   "details": {
+    "permission": "customer.delete"
+   }
+  }
+ },
+ {
+  "who": "admin@example.com",
+  "action": "customer.archive",
+  "params": {
+   "customerId": "CUS-002",
+   "archived": false
+  },
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "customer": {
+    "customerId": "CUS-002",
+    "customerCode": "KH-TEST-002",
+    "name": "Công ty mẫu B",
+    "type": "business",
+    "phone": "0909998877",
+    "status": "new",
+    "companyRepresentative": "Người đại diện đổi",
+    "archived": false,
+    "createdAt": "2026-10-13T07:52:00Z",
+    "updatedAt": "2026-10-13T12:00:00Z"
+   }
+  },
+  "error": null
+ },
+ {
+  "who": "admin@example.com",
+  "action": "customer.archive",
+  "params": {
+   "customerId": "CUS-404"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "NOT_FOUND",
+   "message": "Không tìm thấy khách hàng.",
+   "details": null
+  }
+ },
+ {
+  "who": "cbtd01@example.com",
+  "action": "notification.count",
+  "params": {},
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "unread": 4
+  },
+  "error": null
+ },
+ {
+  "who": "cbtd01@example.com",
+  "action": "notification.list",
+  "params": {},
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "items": [
+    {
+     "notificationId": "NTF-010",
+     "eventType": "progress_rejected",
+     "sourceRecordId": "UPD-006",
+     "message": "Cập nhật tiến độ cho CV-TEST-001 bị từ chối. Vui lòng kiểm tra lý do trong ứng dụng và gửi lại.",
+     "createdAt": "2026-10-13T12:00:00Z",
+     "readAt": null
+    },
+    {
+     "notificationId": "NTF-009",
+     "eventType": "progress_approved",
+     "sourceRecordId": "UPD-005",
+     "message": "Cập nhật tiến độ của bạn cho CV-TEST-001 đã được duyệt.",
+     "createdAt": "2026-10-13T12:00:00Z",
+     "readAt": null
+    },
+    {
+     "notificationId": "NTF-003",
+     "eventType": "progress_approved",
+     "sourceRecordId": "UPD-001",
+     "message": "Cập nhật tiến độ CV-TEST-001 đã được duyệt",
+     "createdAt": "2026-10-13T09:30:00Z",
+     "readAt": null
+    },
+    {
+     "notificationId": "NTF-001",
+     "eventType": "task_assigned",
+     "sourceRecordId": "ASG-001",
+     "message": "Bạn được giao công việc CV-TEST-001",
+     "createdAt": "2026-10-13T08:10:00Z",
+     "readAt": "2026-10-13T08:15:00Z"
+    },
+    {
+     "notificationId": "NTF-004",
+     "eventType": "progress_rejected",
+     "sourceRecordId": "UPD-003",
+     "message": "Cập nhật tiến độ CV-TEST-003 bị từ chối; xem lý do trong ứng dụng",
+     "createdAt": "2026-10-11T11:00:00Z",
+     "readAt": null
+    }
+   ],
+   "page": 1,
+   "pageSize": 20,
+   "total": 5,
+   "unread": 4
+  },
+  "error": null
+ },
+ {
+  "who": "cbtd01@example.com",
+  "action": "notification.list",
+  "params": {
+   "unreadOnly": true,
+   "page": 1,
+   "pageSize": 2
+  },
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "items": [
+    {
+     "notificationId": "NTF-010",
+     "eventType": "progress_rejected",
+     "sourceRecordId": "UPD-006",
+     "message": "Cập nhật tiến độ cho CV-TEST-001 bị từ chối. Vui lòng kiểm tra lý do trong ứng dụng và gửi lại.",
+     "createdAt": "2026-10-13T12:00:00Z",
+     "readAt": null
+    },
+    {
+     "notificationId": "NTF-009",
+     "eventType": "progress_approved",
+     "sourceRecordId": "UPD-005",
+     "message": "Cập nhật tiến độ của bạn cho CV-TEST-001 đã được duyệt.",
+     "createdAt": "2026-10-13T12:00:00Z",
+     "readAt": null
+    }
+   ],
+   "page": 1,
+   "pageSize": 2,
+   "total": 4,
+   "unread": 4
+  },
+  "error": null
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "notification.list",
+  "params": {},
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "items": [
+    {
+     "notificationId": "NTF-007",
+     "eventType": "progress_submitted",
+     "sourceRecordId": "UPD-006",
+     "message": "Có cập nhật tiến độ mới cần duyệt cho CV-TEST-001 (70%)",
+     "createdAt": "2026-10-13T12:00:00Z",
+     "readAt": null
+    },
+    {
+     "notificationId": "NTF-005",
+     "eventType": "progress_submitted",
+     "sourceRecordId": "UPD-005",
+     "message": "Có cập nhật tiến độ mới cần duyệt cho CV-TEST-001 (70%)",
+     "createdAt": "2026-10-13T12:00:00Z",
+     "readAt": null
+    },
+    {
+     "notificationId": "NTF-002",
+     "eventType": "progress_submitted",
+     "sourceRecordId": "UPD-001",
+     "message": "Có cập nhật tiến độ chờ duyệt CV-TEST-001",
+     "createdAt": "2026-10-13T09:00:00Z",
+     "readAt": null
+    }
+   ],
+   "page": 1,
+   "pageSize": 20,
+   "total": 3,
+   "unread": 3
+  },
+  "error": null
+ },
+ {
+  "who": "cbtd01@example.com",
+  "action": "notification.markRead",
+  "params": {
+   "ids": [
+    "NTF-001",
+    "NTF-404",
+    "NTF-004"
+   ]
+  },
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "updated": 1,
+   "unread": 3
+  },
+  "error": null
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "notification.markRead",
+  "params": {
+   "ids": [
+    "NTF-001"
+   ]
+  },
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "updated": 0,
+   "unread": 3
+  },
+  "error": null
+ },
+ {
+  "who": "cbtd01@example.com",
+  "action": "notification.markAllRead",
+  "params": {},
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "updated": 3,
+   "unread": 0
+  },
+  "error": null
+ },
+ {
+  "who": "cbtd01@example.com",
+  "action": "notification.count",
+  "params": {},
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "unread": 0
+  },
+  "error": null
+ },
+ {
+  "who": "admin@example.com",
+  "action": "user.options",
+  "params": {},
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "items": [
+    {
+     "userId": "USR-004",
+     "fullName": "CBTD mẫu 01",
+     "orgUnit": "DV-THU-NGHIEM",
+     "employeeCode": "NV-TEST-004"
+    },
+    {
+     "userId": "USR-005",
+     "fullName": "CBTD mẫu 02",
+     "orgUnit": "DV-THU-NGHIEM",
+     "employeeCode": "NV-TEST-005"
+    },
+    {
+     "userId": "USR-006",
+     "fullName": "CBTD mẫu 03",
+     "orgUnit": "DV-THU-NGHIEM",
+     "employeeCode": "NV-TEST-006"
+    }
+   ]
+  },
+  "error": null
+ },
+ {
+  "who": "cbtd01@example.com",
+  "action": "user.options",
+  "params": {},
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "items": [
+    {
+     "userId": "USR-004",
+     "fullName": "CBTD mẫu 01",
+     "orgUnit": "DV-THU-NGHIEM",
+     "employeeCode": "NV-TEST-004"
+    }
+   ]
+  },
+  "error": null
+ },
+ {
+  "who": "bgd@example.com",
+  "action": "user.options",
+  "params": {},
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "items": [
+    {
+     "userId": "USR-004",
+     "fullName": "CBTD mẫu 01",
+     "orgUnit": "DV-THU-NGHIEM",
+     "employeeCode": "NV-TEST-004"
+    },
+    {
+     "userId": "USR-005",
+     "fullName": "CBTD mẫu 02",
+     "orgUnit": "DV-THU-NGHIEM",
+     "employeeCode": "NV-TEST-005"
+    },
+    {
+     "userId": "USR-006",
+     "fullName": "CBTD mẫu 03",
+     "orgUnit": "DV-THU-NGHIEM",
+     "employeeCode": "NV-TEST-006"
+    }
+   ]
+  },
+  "error": null
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "user.options",
+  "params": {},
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "items": [
+    {
+     "userId": "USR-004",
+     "fullName": "CBTD mẫu 01",
+     "orgUnit": "DV-THU-NGHIEM",
+     "employeeCode": "NV-TEST-004"
+    },
+    {
+     "userId": "USR-005",
+     "fullName": "CBTD mẫu 02",
+     "orgUnit": "DV-THU-NGHIEM",
+     "employeeCode": "NV-TEST-005"
+    },
+    {
+     "userId": "USR-006",
+     "fullName": "CBTD mẫu 03",
+     "orgUnit": "DV-THU-NGHIEM",
+     "employeeCode": "NV-TEST-006"
+    }
+   ]
+  },
+  "error": null
+ },
+ {
+  "who": "admin@example.com",
+  "action": "user.list",
+  "params": {},
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "items": [
+    {
+     "userId": "USR-001",
+     "email": "admin@example.com",
+     "employeeCode": "NV-TEST-001",
+     "fullName": "Quản trị mẫu",
+     "roleId": "ROL-ADMIN",
+     "roleCode": "Admin",
+     "orgUnit": "DV-THU-NGHIEM",
+     "status": "active",
+     "createdAt": "2026-10-13T07:50:00Z",
+     "updatedAt": "2026-10-13T07:50:00Z"
+    },
+    {
+     "userId": "USR-002",
+     "email": "bgd@example.com",
+     "employeeCode": "NV-TEST-002",
+     "fullName": "Ban giám đốc mẫu",
+     "roleId": "ROL-BGD",
+     "roleCode": "BGD",
+     "orgUnit": "DV-THU-NGHIEM",
+     "status": "active",
+     "createdAt": "2026-10-13T07:50:00Z",
+     "updatedAt": "2026-10-13T07:50:00Z"
+    },
+    {
+     "userId": "USR-003",
+     "email": "ksv01@example.com",
+     "employeeCode": "NV-TEST-003",
+     "fullName": "KSV mẫu 01",
+     "roleId": "ROL-KSV",
+     "roleCode": "KSV",
+     "orgUnit": "DV-THU-NGHIEM",
+     "status": "active",
+     "createdAt": "2026-10-13T07:50:00Z",
+     "updatedAt": "2026-10-13T07:50:00Z"
+    },
+    {
+     "userId": "USR-004",
+     "email": "cbtd01@example.com",
+     "employeeCode": "NV-TEST-004",
+     "fullName": "CBTD mẫu 01",
+     "roleId": "ROL-CBTD",
+     "roleCode": "CBTD",
+     "orgUnit": "DV-THU-NGHIEM",
+     "status": "active",
+     "createdAt": "2026-10-13T07:50:00Z",
+     "updatedAt": "2026-10-13T07:50:00Z"
+    },
+    {
+     "userId": "USR-005",
+     "email": "cbtd02@example.com",
+     "employeeCode": "NV-TEST-005",
+     "fullName": "CBTD mẫu 02",
+     "roleId": "ROL-CBTD",
+     "roleCode": "CBTD",
+     "orgUnit": "DV-THU-NGHIEM",
+     "status": "active",
+     "createdAt": "2026-10-13T07:50:00Z",
+     "updatedAt": "2026-10-13T07:50:00Z"
+    },
+    {
+     "userId": "USR-006",
+     "email": "cbtd03@example.com",
+     "employeeCode": "NV-TEST-006",
+     "fullName": "CBTD mẫu 03",
+     "roleId": "ROL-CBTD",
+     "roleCode": "CBTD",
+     "orgUnit": "DV-THU-NGHIEM",
+     "status": "active",
+     "createdAt": "2026-10-13T07:50:00Z",
+     "updatedAt": "2026-10-13T07:50:00Z"
+    },
+    {
+     "userId": "USR-007",
+     "email": "cbtd-inactive@example.com",
+     "employeeCode": "NV-TEST-007",
+     "fullName": "CBTD không hoạt động mẫu",
+     "roleId": "ROL-CBTD",
+     "roleCode": "CBTD",
+     "orgUnit": "DV-THU-NGHIEM",
+     "status": "inactive",
+     "createdAt": "2026-10-13T07:50:00Z",
+     "updatedAt": "2026-10-13T07:50:00Z"
+    }
+   ],
+   "page": 1,
+   "pageSize": 20,
+   "total": 7,
+   "roles": [
+    {
+     "roleId": "ROL-ADMIN",
+     "code": "Admin",
+     "name": "Quản trị"
+    },
+    {
+     "roleId": "ROL-BGD",
+     "code": "BGD",
+     "name": "Ban Giám đốc"
+    },
+    {
+     "roleId": "ROL-KSV",
+     "code": "KSV",
+     "name": "Kiểm soát viên"
+    },
+    {
+     "roleId": "ROL-CBTD",
+     "code": "CBTD",
+     "name": "Cán bộ tín dụng"
+    }
+   ],
+   "counts": {
+    "active": 6,
+    "byRole": {
+     "Admin": 1,
+     "BGD": 1,
+     "KSV": 1,
+     "CBTD": 3
+    }
+   }
+  },
+  "error": null
+ },
+ {
+  "who": "admin@example.com",
+  "action": "user.list",
+  "params": {
+   "status": "inactive"
+  },
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "items": [
+    {
+     "userId": "USR-007",
+     "email": "cbtd-inactive@example.com",
+     "employeeCode": "NV-TEST-007",
+     "fullName": "CBTD không hoạt động mẫu",
+     "roleId": "ROL-CBTD",
+     "roleCode": "CBTD",
+     "orgUnit": "DV-THU-NGHIEM",
+     "status": "inactive",
+     "createdAt": "2026-10-13T07:50:00Z",
+     "updatedAt": "2026-10-13T07:50:00Z"
+    }
+   ],
+   "page": 1,
+   "pageSize": 20,
+   "total": 1,
+   "roles": [
+    {
+     "roleId": "ROL-ADMIN",
+     "code": "Admin",
+     "name": "Quản trị"
+    },
+    {
+     "roleId": "ROL-BGD",
+     "code": "BGD",
+     "name": "Ban Giám đốc"
+    },
+    {
+     "roleId": "ROL-KSV",
+     "code": "KSV",
+     "name": "Kiểm soát viên"
+    },
+    {
+     "roleId": "ROL-CBTD",
+     "code": "CBTD",
+     "name": "Cán bộ tín dụng"
+    }
+   ],
+   "counts": {
+    "active": 6,
+    "byRole": {
+     "Admin": 1,
+     "BGD": 1,
+     "KSV": 1,
+     "CBTD": 3
+    }
+   }
+  },
+  "error": null
+ },
+ {
+  "who": "admin@example.com",
+  "action": "user.list",
+  "params": {
+   "roleCode": "CBTD",
+   "q": "mau",
+   "page": 1,
+   "pageSize": 2
+  },
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "items": [
+    {
+     "userId": "USR-004",
+     "email": "cbtd01@example.com",
+     "employeeCode": "NV-TEST-004",
+     "fullName": "CBTD mẫu 01",
+     "roleId": "ROL-CBTD",
+     "roleCode": "CBTD",
+     "orgUnit": "DV-THU-NGHIEM",
+     "status": "active",
+     "createdAt": "2026-10-13T07:50:00Z",
+     "updatedAt": "2026-10-13T07:50:00Z"
+    },
+    {
+     "userId": "USR-005",
+     "email": "cbtd02@example.com",
+     "employeeCode": "NV-TEST-005",
+     "fullName": "CBTD mẫu 02",
+     "roleId": "ROL-CBTD",
+     "roleCode": "CBTD",
+     "orgUnit": "DV-THU-NGHIEM",
+     "status": "active",
+     "createdAt": "2026-10-13T07:50:00Z",
+     "updatedAt": "2026-10-13T07:50:00Z"
+    }
+   ],
+   "page": 1,
+   "pageSize": 2,
+   "total": 4,
+   "roles": [
+    {
+     "roleId": "ROL-ADMIN",
+     "code": "Admin",
+     "name": "Quản trị"
+    },
+    {
+     "roleId": "ROL-BGD",
+     "code": "BGD",
+     "name": "Ban Giám đốc"
+    },
+    {
+     "roleId": "ROL-KSV",
+     "code": "KSV",
+     "name": "Kiểm soát viên"
+    },
+    {
+     "roleId": "ROL-CBTD",
+     "code": "CBTD",
+     "name": "Cán bộ tín dụng"
+    }
+   ],
+   "counts": {
+    "active": 6,
+    "byRole": {
+     "Admin": 1,
+     "BGD": 1,
+     "KSV": 1,
+     "CBTD": 3
+    }
+   }
+  },
+  "error": null
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "user.list",
+  "params": {},
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "FORBIDDEN",
+   "message": "Bạn không có quyền thực hiện thao tác này.",
+   "details": {
+    "permission": "user.manage"
+   }
+  }
+ },
+ {
+  "who": "admin@example.com",
+  "action": "user.create",
+  "params": {
+   "email": "Moi.Nguoi@Example.com",
+   "employeeCode": "NV-TEST-010",
+   "fullName": "Người mới",
+   "orgUnit": "DV-THU-NGHIEM",
+   "roleId": "ROL-CBTD"
+  },
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "user": {
+    "userId": "USR-008",
+    "email": "moi.nguoi@example.com",
+    "employeeCode": "NV-TEST-010",
+    "fullName": "Người mới",
+    "roleId": "ROL-CBTD",
+    "roleCode": "CBTD",
+    "orgUnit": "DV-THU-NGHIEM",
+    "status": "active",
+    "createdAt": "2026-10-13T12:00:00Z",
+    "updatedAt": "2026-10-13T12:00:00Z"
+   },
+   "replayed": false
+  },
+  "error": null
+ },
+ {
+  "who": "admin@example.com",
+  "action": "user.create",
+  "params": {
+   "email": "moi.nguoi@example.com",
+   "employeeCode": "NV-TEST-011",
+   "fullName": "Trùng email",
+   "orgUnit": "DV-THU-NGHIEM",
+   "roleId": "ROL-CBTD"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "VALIDATION",
+   "message": "Email đã tồn tại.",
+   "details": {
+    "field": "email"
+   }
+  }
+ },
+ {
+  "who": "admin@example.com",
+  "action": "user.create",
+  "params": {
+   "email": "khong-hop-le",
+   "employeeCode": "NV-TEST-012",
+   "fullName": "Email lỗi",
+   "orgUnit": "X",
+   "roleId": "ROL-CBTD"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "VALIDATION",
+   "message": "Email không hợp lệ.",
+   "details": {
+    "field": "email"
+   }
+  }
+ },
+ {
+  "who": "admin@example.com",
+  "action": "user.create",
+  "params": {
+   "email": "vai.tro@example.com",
+   "employeeCode": "NV-TEST-013",
+   "fullName": "Vai trò lạ",
+   "orgUnit": "X",
+   "roleId": "ROL-XYZ"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "VALIDATION",
+   "message": "Vai trò không hợp lệ.",
+   "details": {
+    "field": "roleId"
+   }
+  }
+ },
+ {
+  "who": "admin@example.com",
+  "action": "user.create",
+  "params": {
+   "email": "rq@example.com",
+   "employeeCode": "NV-TEST-014",
+   "fullName": "Có requestId",
+   "orgUnit": "X",
+   "roleId": "ROL-KSV"
+  },
+  "requestId": "rquser-create-01",
+  "ok": true,
+  "data": {
+   "user": {
+    "userId": "USR-009",
+    "email": "rq@example.com",
+    "employeeCode": "NV-TEST-014",
+    "fullName": "Có requestId",
+    "roleId": "ROL-KSV",
+    "roleCode": "KSV",
+    "orgUnit": "X",
+    "status": "active",
+    "createdAt": "2026-10-13T12:00:00Z",
+    "updatedAt": "2026-10-13T12:00:00Z"
+   },
+   "replayed": false
+  },
+  "error": null
+ },
+ {
+  "who": "admin@example.com",
+  "action": "user.create",
+  "params": {
+   "email": "rq@example.com",
+   "employeeCode": "NV-TEST-014",
+   "fullName": "Có requestId",
+   "orgUnit": "X",
+   "roleId": "ROL-KSV"
+  },
+  "requestId": "rquser-create-01",
+  "ok": true,
+  "data": {
+   "user": {
+    "userId": "USR-009",
+    "email": "rq@example.com",
+    "employeeCode": "NV-TEST-014",
+    "fullName": "Có requestId",
+    "roleId": "ROL-KSV",
+    "roleCode": "KSV",
+    "orgUnit": "X",
+    "status": "active",
+    "createdAt": "2026-10-13T12:00:00Z",
+    "updatedAt": "2026-10-13T12:00:00Z"
+   },
+   "replayed": true
+  },
+  "error": null
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "user.create",
+  "params": {
+   "email": "k@example.com",
+   "employeeCode": "NV-TEST-015",
+   "fullName": "KSV không được tạo",
+   "orgUnit": "X",
+   "roleId": "ROL-CBTD"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "FORBIDDEN",
+   "message": "Bạn không có quyền thực hiện thao tác này.",
+   "details": {
+    "permission": "user.manage"
+   }
+  }
+ },
+ {
+  "who": "admin@example.com",
+  "action": "user.update",
+  "params": {
+   "userId": "USR-004",
+   "fullName": "CBTD mẫu 01 (đã sửa)",
+   "orgUnit": "DV-MOI"
+  },
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "user": {
+    "userId": "USR-004",
+    "email": "cbtd01@example.com",
+    "employeeCode": "NV-TEST-004",
+    "fullName": "CBTD mẫu 01 (đã sửa)",
+    "roleId": "ROL-CBTD",
+    "roleCode": "CBTD",
+    "orgUnit": "DV-MOI",
+    "status": "active",
+    "createdAt": "2026-10-13T07:50:00Z",
+    "updatedAt": "2026-10-13T12:00:00Z"
+   }
+  },
+  "error": null
+ },
+ {
+  "who": "admin@example.com",
+  "action": "user.update",
+  "params": {
+   "userId": "USR-001",
+   "roleId": "ROL-KSV"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "CONFLICT",
+   "message": "Không thể tự hạ quyền hoặc vô hiệu hóa tài khoản Admin của chính mình.",
+   "details": null
+  }
+ },
+ {
+  "who": "admin@example.com",
+  "action": "user.update",
+  "params": {
+   "userId": "USR-001",
+   "status": "inactive"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "CONFLICT",
+   "message": "Không thể tự hạ quyền hoặc vô hiệu hóa tài khoản Admin của chính mình.",
+   "details": null
+  }
+ },
+ {
+  "who": "admin@example.com",
+  "action": "user.update",
+  "params": {
+   "userId": "USR-002",
+   "employeeCode": "NV-TEST-003"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "VALIDATION",
+   "message": "Mã cán bộ đã tồn tại.",
+   "details": {
+    "field": "employeeCode"
+   }
+  }
+ },
+ {
+  "who": "admin@example.com",
+  "action": "user.update",
+  "params": {
+   "userId": "USR-002",
+   "status": "bogus"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "VALIDATION",
+   "message": "Trạng thái không hợp lệ.",
+   "details": {
+    "field": "status"
+   }
+  }
+ },
+ {
+  "who": "admin@example.com",
+  "action": "user.update",
+  "params": {
+   "userId": "USR-404",
+   "fullName": "Không có"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "NOT_FOUND",
+   "message": "Không tìm thấy người dùng.",
+   "details": null
+  }
+ },
+ {
+  "who": "admin@example.com",
+  "action": "user.update",
+  "params": {
+   "userId": "USR-002"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "VALIDATION",
+   "message": "Không có thay đổi nào để lưu.",
+   "details": {
+    "field": null
+   }
+  }
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "user.update",
+  "params": {
+   "userId": "USR-004",
+   "fullName": "Không được sửa"
+  },
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "FORBIDDEN",
+   "message": "Bạn không có quyền thực hiện thao tác này.",
+   "details": {
+    "permission": "user.manage"
+   }
+  }
+ },
+ {
+  "who": "admin@example.com",
+  "action": "audit.list",
+  "params": {},
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "items": [
+    {
+     "auditId": "AUD-028",
+     "actorUserId": "USR-001",
+     "actorEmail": "admin@example.com",
+     "action": "user.update",
+     "entityType": "User",
+     "entityId": "USR-004",
+     "createdAt": "2026-10-13T12:00:00Z"
+    },
+    {
+     "auditId": "AUD-027",
+     "actorUserId": "USR-001",
+     "actorEmail": "admin@example.com",
+     "action": "user.create",
+     "entityType": "User",
+     "entityId": "USR-009",
+     "createdAt": "2026-10-13T12:00:00Z"
+    },
+    {
+     "auditId": "AUD-026",
+     "actorUserId": "USR-001",
+     "actorEmail": "admin@example.com",
+     "action": "user.create",
+     "entityType": "User",
+     "entityId": "USR-008",
+     "createdAt": "2026-10-13T12:00:00Z"
+    },
+    {
+     "auditId": "AUD-025",
+     "actorUserId": "USR-003",
+     "actorEmail": "ksv01@example.com",
+     "action": "customer.update",
+     "entityType": "Customer",
+     "entityId": "CUS-001",
+     "createdAt": "2026-10-13T12:00:00Z"
+    },
+    {
+     "auditId": "AUD-024",
+     "actorUserId": "USR-003",
+     "actorEmail": "ksv01@example.com",
+     "action": "customer.update",
+     "entityType": "Customer",
+     "entityId": "CUS-001",
+     "createdAt": "2026-10-13T12:00:00Z"
+    },
+    {
+     "auditId": "AUD-023",
+     "actorUserId": "USR-003",
+     "actorEmail": "ksv01@example.com",
+     "action": "customer.update",
+     "entityType": "Customer",
+     "entityId": "CUS-002",
+     "createdAt": "2026-10-13T12:00:00Z"
+    },
+    {
+     "auditId": "AUD-022",
+     "actorUserId": "USR-003",
+     "actorEmail": "ksv01@example.com",
+     "action": "customer.create",
+     "entityType": "Customer",
+     "entityId": "CUS-005",
+     "createdAt": "2026-10-13T12:00:00Z"
+    },
+    {
+     "auditId": "AUD-021",
+     "actorUserId": "USR-003",
+     "actorEmail": "ksv01@example.com",
+     "action": "customer.create",
+     "entityType": "Customer",
+     "entityId": "CUS-004",
+     "createdAt": "2026-10-13T12:00:00Z"
+    },
+    {
+     "auditId": "AUD-020",
+     "actorUserId": "USR-001",
+     "actorEmail": "admin@example.com",
+     "action": "progress.approve",
+     "entityType": "TaskUpdate",
+     "entityId": "UPD-002",
+     "createdAt": "2026-10-13T12:00:00Z"
+    },
+    {
+     "auditId": "AUD-019",
+     "actorUserId": "USR-003",
+     "actorEmail": "ksv01@example.com",
+     "action": "progress.reject",
+     "entityType": "TaskUpdate",
+     "entityId": "UPD-006",
+     "createdAt": "2026-10-13T12:00:00Z"
+    },
+    {
+     "auditId": "AUD-018",
+     "actorUserId": "USR-003",
+     "actorEmail": "ksv01@example.com",
+     "action": "progress.approve",
+     "entityType": "TaskUpdate",
+     "entityId": "UPD-005",
+     "createdAt": "2026-10-13T12:00:00Z"
+    },
+    {
+     "auditId": "AUD-017",
+     "actorUserId": "USR-004",
+     "actorEmail": "cbtd01@example.com",
+     "action": "progress.submit",
+     "entityType": "TaskUpdate",
+     "entityId": "UPD-006",
+     "createdAt": "2026-10-13T12:00:00Z"
+    },
+    {
+     "auditId": "AUD-016",
+     "actorUserId": "USR-004",
+     "actorEmail": "cbtd01@example.com",
+     "action": "progress.submit",
+     "entityType": "TaskUpdate",
+     "entityId": "UPD-005",
+     "createdAt": "2026-10-13T12:00:00Z"
+    },
+    {
+     "auditId": "AUD-015",
+     "actorUserId": "USR-003",
+     "actorEmail": "ksv01@example.com",
+     "action": "task.restore",
+     "entityType": "Task",
+     "entityId": "TSK-004",
+     "createdAt": "2026-10-13T12:00:00Z"
+    },
+    {
+     "auditId": "AUD-014",
+     "actorUserId": "USR-003",
+     "actorEmail": "ksv01@example.com",
+     "action": "task.archive",
+     "entityType": "Task",
+     "entityId": "TSK-004",
+     "createdAt": "2026-10-13T12:00:00Z"
+    },
+    {
+     "auditId": "AUD-013",
+     "actorUserId": "USR-003",
+     "actorEmail": "ksv01@example.com",
+     "action": "task.update",
+     "entityType": "Task",
+     "entityId": "TSK-002",
+     "createdAt": "2026-10-13T12:00:00Z"
+    },
+    {
+     "auditId": "AUD-012",
+     "actorUserId": "USR-004",
+     "actorEmail": "cbtd01@example.com",
+     "action": "task.start",
+     "entityType": "Task",
+     "entityId": "TSK-002",
+     "createdAt": "2026-10-13T12:00:00Z"
+    },
+    {
+     "auditId": "AUD-011",
+     "actorUserId": "USR-003",
+     "actorEmail": "ksv01@example.com",
+     "action": "task.update",
+     "entityType": "Task",
+     "entityId": "TSK-004",
+     "createdAt": "2026-10-13T12:00:00Z"
+    },
+    {
+     "auditId": "AUD-010",
+     "actorUserId": "USR-004",
+     "actorEmail": "cbtd01@example.com",
+     "action": "task.assign",
+     "entityType": "TaskAssignee",
+     "entityId": "ASG-007",
+     "createdAt": "2026-10-13T12:00:00Z"
+    },
+    {
+     "auditId": "AUD-009",
+     "actorUserId": "USR-004",
+     "actorEmail": "cbtd01@example.com",
+     "action": "task.create",
+     "entityType": "Task",
+     "entityId": "TSK-005",
+     "createdAt": "2026-10-13T12:00:00Z"
+    }
+   ],
+   "page": 1,
+   "pageSize": 20,
+   "total": 28
+  },
+  "error": null
+ },
+ {
+  "who": "admin@example.com",
+  "action": "audit.list",
+  "params": {
+   "action": "task.create",
+   "page": 1,
+   "pageSize": 3
+  },
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "items": [
+    {
+     "auditId": "AUD-009",
+     "actorUserId": "USR-004",
+     "actorEmail": "cbtd01@example.com",
+     "action": "task.create",
+     "entityType": "Task",
+     "entityId": "TSK-005",
+     "createdAt": "2026-10-13T12:00:00Z"
+    },
+    {
+     "auditId": "AUD-003",
+     "actorUserId": "USR-003",
+     "actorEmail": "ksv01@example.com",
+     "action": "task.create",
+     "entityType": "Task",
+     "entityId": "TSK-001",
+     "createdAt": "2026-10-13T08:10:00Z"
+    }
+   ],
+   "page": 1,
+   "pageSize": 3,
+   "total": 2
+  },
+  "error": null
+ },
+ {
+  "who": "admin@example.com",
+  "action": "audit.list",
+  "params": {
+   "entityId": "TSK-001",
+   "from": "2026-01-01",
+   "to": "2026-12-31"
+  },
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "items": [
+    {
+     "auditId": "AUD-003",
+     "actorUserId": "USR-003",
+     "actorEmail": "ksv01@example.com",
+     "action": "task.create",
+     "entityType": "Task",
+     "entityId": "TSK-001",
+     "createdAt": "2026-10-13T08:10:00Z"
+    }
+   ],
+   "page": 1,
+   "pageSize": 20,
+   "total": 1
+  },
+  "error": null
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "audit.list",
+  "params": {},
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "FORBIDDEN",
+   "message": "Bạn không có quyền thực hiện thao tác này.",
+   "details": {
+    "permission": "audit.view"
+   }
+  }
+ },
+ {
+  "who": "admin@example.com",
+  "action": "admin.integrity",
+  "params": {},
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "ok": true,
+   "issueCount": 0,
+   "issues": [],
+   "checkedAt": "2026-10-13T12:00:00Z"
+  },
+  "error": null
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "admin.integrity",
+  "params": {},
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "FORBIDDEN",
+   "message": "Bạn không có quyền thực hiện thao tác này.",
+   "details": {
+    "permission": "user.manage"
+   }
+  }
+ },
+ {
+  "who": "admin@example.com",
+  "action": "admin.reconcile",
+  "params": {},
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "fixed": []
+  },
+  "error": null
+ },
+ {
+  "who": "admin@example.com",
+  "action": "admin.backup",
+  "params": {},
+  "requestId": "rqbackup-0001",
+  "ok": true,
+  "data": {
+   "enabled": false,
+   "message": "Sao lưu chỉ khả dụng trên môi trường Google Workspace."
+  },
+  "error": null
+ },
+ {
+  "who": "admin@example.com",
+  "action": "admin.restore",
+  "params": {},
+  "requestId": "rqrestore-001",
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "NOT_ENABLED",
+   "message": "Khôi phục dữ liệu bị khóa trên môi trường sản xuất cho tới khi hoàn tất kiểm thử U7. Hãy thực hiện theo operations-runbook.",
+   "details": null
+  }
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "admin.restore",
+  "params": {},
+  "requestId": "rqrestore-002",
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "FORBIDDEN",
+   "message": "Bạn không có quyền thực hiện thao tác này.",
+   "details": {
+    "permission": "user.manage"
+   }
+  }
+ },
+ {
+  "who": "admin@example.com",
+  "action": "nope.action",
+  "params": {},
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "NOT_FOUND",
+   "message": "Hành động không tồn tại.",
+   "details": null
+  }
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "dashboard.get",
+  "params": {},
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "kpis": {
+    "inProgress": 2,
+    "notStarted": 2,
+    "completed": 1,
+    "overdue": 0,
+    "total": 5,
+    "dueToday": 0,
+    "completionRate": 20,
+    "customers": 5,
+    "pendingReviews": 0
+   },
+   "today": "2026-10-13",
+   "byStatus": [
+    {
+     "status": "not_started",
+     "count": 2
+    },
+    {
+     "status": "in_progress",
+     "count": 2
+    },
+    {
+     "status": "completed",
+     "count": 1
+    }
+   ],
+   "byAssignee": [
+    {
+     "userId": "USR-004",
+     "name": "CBTD mẫu 01 (đã sửa)",
+     "open": 3,
+     "overdue": 0
+    },
+    {
+     "userId": "USR-006",
+     "name": "CBTD mẫu 03",
+     "open": 1,
+     "overdue": 0
+    }
+   ],
+   "upcoming": [
+    {
+     "taskId": "TSK-001",
+     "taskCode": "CV-TEST-001",
+     "title": "Thẩm định hồ sơ mẫu A",
+     "description": "Thu thập và kiểm tra hồ sơ mẫu",
+     "status": "in_progress",
+     "priority": "high",
+     "dueAt": "2026-10-20",
+     "overdue": false,
+     "archived": false,
+     "customer": {
+      "customerId": "CUS-001",
+      "code": "KH-TEST-001",
+      "name": "Khách hàng mẫu A"
+     },
+     "primary": {
+      "userId": "USR-004",
+      "name": "CBTD mẫu 01 (đã sửa)"
+     },
+     "collaborator": {
+      "userId": "USR-005",
+      "name": "CBTD mẫu 02"
+     },
+     "createdBy": {
+      "userId": "USR-003",
+      "name": "KSV mẫu 01"
+     },
+     "createdAt": "2026-10-13T08:10:00Z",
+     "updatedAt": "2026-10-13T09:30:00Z",
+     "completedAt": null,
+     "approvedProgress": 70,
+     "pendingUpdates": 0
+    },
+    {
+     "taskId": "TSK-002",
+     "taskCode": "CV-TEST-002",
+     "title": "Kiểm tra tài sản bảo đảm mẫu B",
+     "description": "Kiểm tra tài sản theo danh mục mẫu",
+     "status": "in_progress",
+     "priority": "normal",
+     "dueAt": "2026-10-25",
+     "overdue": false,
+     "archived": false,
+     "customer": {
+      "customerId": "CUS-002",
+      "code": "KH-TEST-002",
+      "name": "Công ty mẫu B"
+     },
+     "primary": {
+      "userId": "USR-004",
+      "name": "CBTD mẫu 01 (đã sửa)"
+     },
+     "collaborator": null,
+     "createdBy": {
+      "userId": "USR-004",
+      "name": "CBTD mẫu 01 (đã sửa)"
+     },
+     "createdAt": "2026-10-13T08:20:00Z",
+     "updatedAt": "2026-10-13T12:00:00Z",
+     "completedAt": null,
+     "approvedProgress": 0,
+     "pendingUpdates": 0
+    },
+    {
+     "taskId": "TSK-004",
+     "taskCode": "CV-TEST-004",
+     "title": "Báo cáo tiến độ mẫu D (cập nhật)",
+     "description": "Báo cáo định kỳ mẫu",
+     "status": "not_started",
+     "priority": "high",
+     "dueAt": "2026-11-15",
+     "overdue": false,
+     "archived": false,
+     "customer": {
+      "customerId": "CUS-001",
+      "code": "KH-TEST-001",
+      "name": "Khách hàng mẫu A"
+     },
+     "primary": {
+      "userId": "USR-006",
+      "name": "CBTD mẫu 03"
+     },
+     "collaborator": null,
+     "createdBy": {
+      "userId": "USR-002",
+      "name": "Ban giám đốc mẫu"
+     },
+     "createdAt": "2026-10-13T08:30:00Z",
+     "updatedAt": "2026-10-13T12:00:00Z",
+     "completedAt": null,
+     "approvedProgress": 0,
+     "pendingUpdates": 0
+    },
+    {
+     "taskId": "TSK-005",
+     "taskCode": "CV-0005",
+     "title": "Việc mới của CBTD01",
+     "description": "",
+     "status": "not_started",
+     "priority": "high",
+     "dueAt": "2026-11-30",
+     "overdue": false,
+     "archived": false,
+     "customer": {
+      "customerId": "CUS-001",
+      "code": "KH-TEST-001",
+      "name": "Khách hàng mẫu A"
+     },
+     "primary": {
+      "userId": "USR-004",
+      "name": "CBTD mẫu 01 (đã sửa)"
+     },
+     "collaborator": null,
+     "createdBy": {
+      "userId": "USR-004",
+      "name": "CBTD mẫu 01 (đã sửa)"
+     },
+     "createdAt": "2026-10-13T12:00:00Z",
+     "updatedAt": "2026-10-13T12:00:00Z",
+     "completedAt": null,
+     "approvedProgress": 0,
+     "pendingUpdates": 0
+    }
+   ]
+  },
+  "error": null
+ },
+ {
+  "who": "bgd@example.com",
+  "action": "dashboard.get",
+  "params": {},
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "kpis": {
+    "inProgress": 2,
+    "notStarted": 2,
+    "completed": 1,
+    "overdue": 0,
+    "total": 5,
+    "dueToday": 0,
+    "completionRate": 20,
+    "customers": 5
+   },
+   "today": "2026-10-13",
+   "byStatus": [
+    {
+     "status": "not_started",
+     "count": 2
+    },
+    {
+     "status": "in_progress",
+     "count": 2
+    },
+    {
+     "status": "completed",
+     "count": 1
+    }
+   ],
+   "byAssignee": [
+    {
+     "userId": "USR-004",
+     "name": "CBTD mẫu 01 (đã sửa)",
+     "open": 3,
+     "overdue": 0
+    },
+    {
+     "userId": "USR-006",
+     "name": "CBTD mẫu 03",
+     "open": 1,
+     "overdue": 0
+    }
+   ],
+   "upcoming": [
+    {
+     "taskId": "TSK-001",
+     "taskCode": "CV-TEST-001",
+     "title": "Thẩm định hồ sơ mẫu A",
+     "description": "Thu thập và kiểm tra hồ sơ mẫu",
+     "status": "in_progress",
+     "priority": "high",
+     "dueAt": "2026-10-20",
+     "overdue": false,
+     "archived": false,
+     "customer": {
+      "customerId": "CUS-001",
+      "code": "KH-TEST-001",
+      "name": "Khách hàng mẫu A"
+     },
+     "primary": {
+      "userId": "USR-004",
+      "name": "CBTD mẫu 01 (đã sửa)"
+     },
+     "collaborator": {
+      "userId": "USR-005",
+      "name": "CBTD mẫu 02"
+     },
+     "createdBy": {
+      "userId": "USR-003",
+      "name": "KSV mẫu 01"
+     },
+     "createdAt": "2026-10-13T08:10:00Z",
+     "updatedAt": "2026-10-13T09:30:00Z",
+     "completedAt": null,
+     "approvedProgress": 70,
+     "pendingUpdates": 0
+    },
+    {
+     "taskId": "TSK-002",
+     "taskCode": "CV-TEST-002",
+     "title": "Kiểm tra tài sản bảo đảm mẫu B",
+     "description": "Kiểm tra tài sản theo danh mục mẫu",
+     "status": "in_progress",
+     "priority": "normal",
+     "dueAt": "2026-10-25",
+     "overdue": false,
+     "archived": false,
+     "customer": {
+      "customerId": "CUS-002",
+      "code": "KH-TEST-002",
+      "name": "Công ty mẫu B"
+     },
+     "primary": {
+      "userId": "USR-004",
+      "name": "CBTD mẫu 01 (đã sửa)"
+     },
+     "collaborator": null,
+     "createdBy": {
+      "userId": "USR-004",
+      "name": "CBTD mẫu 01 (đã sửa)"
+     },
+     "createdAt": "2026-10-13T08:20:00Z",
+     "updatedAt": "2026-10-13T12:00:00Z",
+     "completedAt": null,
+     "approvedProgress": 0,
+     "pendingUpdates": 0
+    },
+    {
+     "taskId": "TSK-004",
+     "taskCode": "CV-TEST-004",
+     "title": "Báo cáo tiến độ mẫu D (cập nhật)",
+     "description": "Báo cáo định kỳ mẫu",
+     "status": "not_started",
+     "priority": "high",
+     "dueAt": "2026-11-15",
+     "overdue": false,
+     "archived": false,
+     "customer": {
+      "customerId": "CUS-001",
+      "code": "KH-TEST-001",
+      "name": "Khách hàng mẫu A"
+     },
+     "primary": {
+      "userId": "USR-006",
+      "name": "CBTD mẫu 03"
+     },
+     "collaborator": null,
+     "createdBy": {
+      "userId": "USR-002",
+      "name": "Ban giám đốc mẫu"
+     },
+     "createdAt": "2026-10-13T08:30:00Z",
+     "updatedAt": "2026-10-13T12:00:00Z",
+     "completedAt": null,
+     "approvedProgress": 0,
+     "pendingUpdates": 0
+    },
+    {
+     "taskId": "TSK-005",
+     "taskCode": "CV-0005",
+     "title": "Việc mới của CBTD01",
+     "description": "",
+     "status": "not_started",
+     "priority": "high",
+     "dueAt": "2026-11-30",
+     "overdue": false,
+     "archived": false,
+     "customer": {
+      "customerId": "CUS-001",
+      "code": "KH-TEST-001",
+      "name": "Khách hàng mẫu A"
+     },
+     "primary": {
+      "userId": "USR-004",
+      "name": "CBTD mẫu 01 (đã sửa)"
+     },
+     "collaborator": null,
+     "createdBy": {
+      "userId": "USR-004",
+      "name": "CBTD mẫu 01 (đã sửa)"
+     },
+     "createdAt": "2026-10-13T12:00:00Z",
+     "updatedAt": "2026-10-13T12:00:00Z",
+     "completedAt": null,
+     "approvedProgress": 0,
+     "pendingUpdates": 0
+    }
+   ]
+  },
+  "error": null
+ },
+ {
+  "who": "bgd@example.com",
+  "action": "dashboard.director",
+  "params": {},
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "FORBIDDEN",
+   "message": "Bạn không có quyền thực hiện thao tác này.",
+   "details": {
+    "permission": "dashboard.view_director"
+   }
+  }
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "dashboard.director",
+  "params": {},
+  "requestId": null,
+  "ok": false,
+  "data": null,
+  "error": {
+   "code": "FORBIDDEN",
+   "message": "Bạn không có quyền thực hiện thao tác này.",
+   "details": {
+    "permission": "dashboard.view_director"
+   }
+  }
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "dashboard.overview",
+  "params": {},
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "dashboard": {
+    "kpis": {
+     "inProgress": 2,
+     "notStarted": 2,
+     "completed": 1,
+     "overdue": 0,
+     "total": 5,
+     "dueToday": 0,
+     "completionRate": 20,
+     "customers": 5,
+     "pendingReviews": 0
+    },
+    "today": "2026-10-13",
+    "byStatus": [
+     {
+      "status": "not_started",
+      "count": 2
+     },
+     {
+      "status": "in_progress",
+      "count": 2
+     },
+     {
+      "status": "completed",
+      "count": 1
+     }
+    ],
+    "byAssignee": [
+     {
+      "userId": "USR-004",
+      "name": "CBTD mẫu 01 (đã sửa)",
+      "open": 3,
+      "overdue": 0
+     },
+     {
+      "userId": "USR-006",
+      "name": "CBTD mẫu 03",
+      "open": 1,
+      "overdue": 0
+     }
+    ],
+    "upcoming": [
+     {
+      "taskId": "TSK-001",
+      "taskCode": "CV-TEST-001",
+      "title": "Thẩm định hồ sơ mẫu A",
+      "description": "Thu thập và kiểm tra hồ sơ mẫu",
+      "status": "in_progress",
+      "priority": "high",
+      "dueAt": "2026-10-20",
+      "overdue": false,
+      "archived": false,
+      "customer": {
+       "customerId": "CUS-001",
+       "code": "KH-TEST-001",
+       "name": "Khách hàng mẫu A"
+      },
+      "primary": {
+       "userId": "USR-004",
+       "name": "CBTD mẫu 01 (đã sửa)"
+      },
+      "collaborator": {
+       "userId": "USR-005",
+       "name": "CBTD mẫu 02"
+      },
+      "createdBy": {
+       "userId": "USR-003",
+       "name": "KSV mẫu 01"
+      },
+      "createdAt": "2026-10-13T08:10:00Z",
+      "updatedAt": "2026-10-13T09:30:00Z",
+      "completedAt": null,
+      "approvedProgress": 70,
+      "pendingUpdates": 0
+     },
+     {
+      "taskId": "TSK-002",
+      "taskCode": "CV-TEST-002",
+      "title": "Kiểm tra tài sản bảo đảm mẫu B",
+      "description": "Kiểm tra tài sản theo danh mục mẫu",
+      "status": "in_progress",
+      "priority": "normal",
+      "dueAt": "2026-10-25",
+      "overdue": false,
+      "archived": false,
+      "customer": {
+       "customerId": "CUS-002",
+       "code": "KH-TEST-002",
+       "name": "Công ty mẫu B"
+      },
+      "primary": {
+       "userId": "USR-004",
+       "name": "CBTD mẫu 01 (đã sửa)"
+      },
+      "collaborator": null,
+      "createdBy": {
+       "userId": "USR-004",
+       "name": "CBTD mẫu 01 (đã sửa)"
+      },
+      "createdAt": "2026-10-13T08:20:00Z",
+      "updatedAt": "2026-10-13T12:00:00Z",
+      "completedAt": null,
+      "approvedProgress": 0,
+      "pendingUpdates": 0
+     },
+     {
+      "taskId": "TSK-004",
+      "taskCode": "CV-TEST-004",
+      "title": "Báo cáo tiến độ mẫu D (cập nhật)",
+      "description": "Báo cáo định kỳ mẫu",
+      "status": "not_started",
+      "priority": "high",
+      "dueAt": "2026-11-15",
+      "overdue": false,
+      "archived": false,
+      "customer": {
+       "customerId": "CUS-001",
+       "code": "KH-TEST-001",
+       "name": "Khách hàng mẫu A"
+      },
+      "primary": {
+       "userId": "USR-006",
+       "name": "CBTD mẫu 03"
+      },
+      "collaborator": null,
+      "createdBy": {
+       "userId": "USR-002",
+       "name": "Ban giám đốc mẫu"
+      },
+      "createdAt": "2026-10-13T08:30:00Z",
+      "updatedAt": "2026-10-13T12:00:00Z",
+      "completedAt": null,
+      "approvedProgress": 0,
+      "pendingUpdates": 0
+     },
+     {
+      "taskId": "TSK-005",
+      "taskCode": "CV-0005",
+      "title": "Việc mới của CBTD01",
+      "description": "",
+      "status": "not_started",
+      "priority": "high",
+      "dueAt": "2026-11-30",
+      "overdue": false,
+      "archived": false,
+      "customer": {
+       "customerId": "CUS-001",
+       "code": "KH-TEST-001",
+       "name": "Khách hàng mẫu A"
+      },
+      "primary": {
+       "userId": "USR-004",
+       "name": "CBTD mẫu 01 (đã sửa)"
+      },
+      "collaborator": null,
+      "createdBy": {
+       "userId": "USR-004",
+       "name": "CBTD mẫu 01 (đã sửa)"
+      },
+      "createdAt": "2026-10-13T12:00:00Z",
+      "updatedAt": "2026-10-13T12:00:00Z",
+      "completedAt": null,
+      "approvedProgress": 0,
+      "pendingUpdates": 0
+     }
+    ]
+   },
+   "director": null
+  },
+  "error": null
+ },
+ {
+  "who": "bgd@example.com",
+  "action": "dashboard.overview",
+  "params": {},
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "dashboard": {
+    "kpis": {
+     "inProgress": 2,
+     "notStarted": 2,
+     "completed": 1,
+     "overdue": 0,
+     "total": 5,
+     "dueToday": 0,
+     "completionRate": 20,
+     "customers": 5
+    },
+    "today": "2026-10-13",
+    "byStatus": [
+     {
+      "status": "not_started",
+      "count": 2
+     },
+     {
+      "status": "in_progress",
+      "count": 2
+     },
+     {
+      "status": "completed",
+      "count": 1
+     }
+    ],
+    "byAssignee": [
+     {
+      "userId": "USR-004",
+      "name": "CBTD mẫu 01 (đã sửa)",
+      "open": 3,
+      "overdue": 0
+     },
+     {
+      "userId": "USR-006",
+      "name": "CBTD mẫu 03",
+      "open": 1,
+      "overdue": 0
+     }
+    ],
+    "upcoming": [
+     {
+      "taskId": "TSK-001",
+      "taskCode": "CV-TEST-001",
+      "title": "Thẩm định hồ sơ mẫu A",
+      "description": "Thu thập và kiểm tra hồ sơ mẫu",
+      "status": "in_progress",
+      "priority": "high",
+      "dueAt": "2026-10-20",
+      "overdue": false,
+      "archived": false,
+      "customer": {
+       "customerId": "CUS-001",
+       "code": "KH-TEST-001",
+       "name": "Khách hàng mẫu A"
+      },
+      "primary": {
+       "userId": "USR-004",
+       "name": "CBTD mẫu 01 (đã sửa)"
+      },
+      "collaborator": {
+       "userId": "USR-005",
+       "name": "CBTD mẫu 02"
+      },
+      "createdBy": {
+       "userId": "USR-003",
+       "name": "KSV mẫu 01"
+      },
+      "createdAt": "2026-10-13T08:10:00Z",
+      "updatedAt": "2026-10-13T09:30:00Z",
+      "completedAt": null,
+      "approvedProgress": 70,
+      "pendingUpdates": 0
+     },
+     {
+      "taskId": "TSK-002",
+      "taskCode": "CV-TEST-002",
+      "title": "Kiểm tra tài sản bảo đảm mẫu B",
+      "description": "Kiểm tra tài sản theo danh mục mẫu",
+      "status": "in_progress",
+      "priority": "normal",
+      "dueAt": "2026-10-25",
+      "overdue": false,
+      "archived": false,
+      "customer": {
+       "customerId": "CUS-002",
+       "code": "KH-TEST-002",
+       "name": "Công ty mẫu B"
+      },
+      "primary": {
+       "userId": "USR-004",
+       "name": "CBTD mẫu 01 (đã sửa)"
+      },
+      "collaborator": null,
+      "createdBy": {
+       "userId": "USR-004",
+       "name": "CBTD mẫu 01 (đã sửa)"
+      },
+      "createdAt": "2026-10-13T08:20:00Z",
+      "updatedAt": "2026-10-13T12:00:00Z",
+      "completedAt": null,
+      "approvedProgress": 0,
+      "pendingUpdates": 0
+     },
+     {
+      "taskId": "TSK-004",
+      "taskCode": "CV-TEST-004",
+      "title": "Báo cáo tiến độ mẫu D (cập nhật)",
+      "description": "Báo cáo định kỳ mẫu",
+      "status": "not_started",
+      "priority": "high",
+      "dueAt": "2026-11-15",
+      "overdue": false,
+      "archived": false,
+      "customer": {
+       "customerId": "CUS-001",
+       "code": "KH-TEST-001",
+       "name": "Khách hàng mẫu A"
+      },
+      "primary": {
+       "userId": "USR-006",
+       "name": "CBTD mẫu 03"
+      },
+      "collaborator": null,
+      "createdBy": {
+       "userId": "USR-002",
+       "name": "Ban giám đốc mẫu"
+      },
+      "createdAt": "2026-10-13T08:30:00Z",
+      "updatedAt": "2026-10-13T12:00:00Z",
+      "completedAt": null,
+      "approvedProgress": 0,
+      "pendingUpdates": 0
+     },
+     {
+      "taskId": "TSK-005",
+      "taskCode": "CV-0005",
+      "title": "Việc mới của CBTD01",
+      "description": "",
+      "status": "not_started",
+      "priority": "high",
+      "dueAt": "2026-11-30",
+      "overdue": false,
+      "archived": false,
+      "customer": {
+       "customerId": "CUS-001",
+       "code": "KH-TEST-001",
+       "name": "Khách hàng mẫu A"
+      },
+      "primary": {
+       "userId": "USR-004",
+       "name": "CBTD mẫu 01 (đã sửa)"
+      },
+      "collaborator": null,
+      "createdBy": {
+       "userId": "USR-004",
+       "name": "CBTD mẫu 01 (đã sửa)"
+      },
+      "createdAt": "2026-10-13T12:00:00Z",
+      "updatedAt": "2026-10-13T12:00:00Z",
+      "completedAt": null,
+      "approvedProgress": 0,
+      "pendingUpdates": 0
+     }
+    ]
+   },
+   "director": null
+  },
+  "error": null
+ },
+ {
+  "who": "cbtd01@example.com",
+  "action": "dashboard.overview",
+  "params": {},
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "dashboard": {
+    "kpis": {
+     "inProgress": 2,
+     "notStarted": 1,
+     "completed": 1,
+     "overdue": 0,
+     "total": 4,
+     "dueToday": 0,
+     "completionRate": 25,
+     "customers": 3
+    },
+    "today": "2026-10-13",
+    "byStatus": [
+     {
+      "status": "not_started",
+      "count": 1
+     },
+     {
+      "status": "in_progress",
+      "count": 2
+     },
+     {
+      "status": "completed",
+      "count": 1
+     }
+    ],
+    "upcoming": [
+     {
+      "taskId": "TSK-001",
+      "taskCode": "CV-TEST-001",
+      "title": "Thẩm định hồ sơ mẫu A",
+      "description": "Thu thập và kiểm tra hồ sơ mẫu",
+      "status": "in_progress",
+      "priority": "high",
+      "dueAt": "2026-10-20",
+      "overdue": false,
+      "archived": false,
+      "customer": {
+       "customerId": "CUS-001",
+       "code": "KH-TEST-001",
+       "name": "Khách hàng mẫu A"
+      },
+      "primary": {
+       "userId": "USR-004",
+       "name": "CBTD mẫu 01 (đã sửa)"
+      },
+      "collaborator": {
+       "userId": "USR-005",
+       "name": "CBTD mẫu 02"
+      },
+      "createdBy": {
+       "userId": "USR-003",
+       "name": "KSV mẫu 01"
+      },
+      "createdAt": "2026-10-13T08:10:00Z",
+      "updatedAt": "2026-10-13T09:30:00Z",
+      "completedAt": null,
+      "approvedProgress": 70,
+      "pendingUpdates": 0
+     },
+     {
+      "taskId": "TSK-002",
+      "taskCode": "CV-TEST-002",
+      "title": "Kiểm tra tài sản bảo đảm mẫu B",
+      "description": "Kiểm tra tài sản theo danh mục mẫu",
+      "status": "in_progress",
+      "priority": "normal",
+      "dueAt": "2026-10-25",
+      "overdue": false,
+      "archived": false,
+      "customer": {
+       "customerId": "CUS-002",
+       "code": "KH-TEST-002",
+       "name": "Công ty mẫu B"
+      },
+      "primary": {
+       "userId": "USR-004",
+       "name": "CBTD mẫu 01 (đã sửa)"
+      },
+      "collaborator": null,
+      "createdBy": {
+       "userId": "USR-004",
+       "name": "CBTD mẫu 01 (đã sửa)"
+      },
+      "createdAt": "2026-10-13T08:20:00Z",
+      "updatedAt": "2026-10-13T12:00:00Z",
+      "completedAt": null,
+      "approvedProgress": 0,
+      "pendingUpdates": 0
+     },
+     {
+      "taskId": "TSK-005",
+      "taskCode": "CV-0005",
+      "title": "Việc mới của CBTD01",
+      "description": "",
+      "status": "not_started",
+      "priority": "high",
+      "dueAt": "2026-11-30",
+      "overdue": false,
+      "archived": false,
+      "customer": {
+       "customerId": "CUS-001",
+       "code": "KH-TEST-001",
+       "name": "Khách hàng mẫu A"
+      },
+      "primary": {
+       "userId": "USR-004",
+       "name": "CBTD mẫu 01 (đã sửa)"
+      },
+      "collaborator": null,
+      "createdBy": {
+       "userId": "USR-004",
+       "name": "CBTD mẫu 01 (đã sửa)"
+      },
+      "createdAt": "2026-10-13T12:00:00Z",
+      "updatedAt": "2026-10-13T12:00:00Z",
+      "completedAt": null,
+      "approvedProgress": 0,
+      "pendingUpdates": 0
+     }
+    ]
+   },
+   "director": null
+  },
+  "error": null
+ },
+ {
+  "who": "cbtd03@example.com",
+  "action": "dashboard.get",
+  "params": {},
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "kpis": {
+    "inProgress": 0,
+    "notStarted": 1,
+    "completed": 0,
+    "overdue": 0,
+    "total": 1,
+    "dueToday": 0,
+    "completionRate": 0,
+    "customers": 1
+   },
+   "today": "2026-10-13",
+   "byStatus": [
+    {
+     "status": "not_started",
+     "count": 1
+    },
+    {
+     "status": "in_progress",
+     "count": 0
+    },
+    {
+     "status": "completed",
+     "count": 0
+    }
+   ],
+   "upcoming": [
+    {
+     "taskId": "TSK-004",
+     "taskCode": "CV-TEST-004",
+     "title": "Báo cáo tiến độ mẫu D (cập nhật)",
+     "description": "Báo cáo định kỳ mẫu",
+     "status": "not_started",
+     "priority": "high",
+     "dueAt": "2026-11-15",
+     "overdue": false,
+     "archived": false,
+     "customer": {
+      "customerId": "CUS-001",
+      "code": "KH-TEST-001",
+      "name": "Khách hàng mẫu A"
+     },
+     "primary": {
+      "userId": "USR-006",
+      "name": "CBTD mẫu 03"
+     },
+     "collaborator": null,
+     "createdBy": {
+      "userId": "USR-002",
+      "name": "Ban giám đốc mẫu"
+     },
+     "createdAt": "2026-10-13T08:30:00Z",
+     "updatedAt": "2026-10-13T12:00:00Z",
+     "completedAt": null,
+     "approvedProgress": 0,
+     "pendingUpdates": 0
+    }
+   ]
+  },
+  "error": null
+ },
+ {
+  "who": "admin@example.com",
+  "action": "dashboard.get",
+  "params": {},
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "kpis": {
+    "inProgress": 2,
+    "notStarted": 2,
+    "completed": 1,
+    "overdue": 0,
+    "total": 5,
+    "dueToday": 0,
+    "completionRate": 20,
+    "customers": 5,
+    "pendingReviews": 0
+   },
+   "today": "2026-10-13",
+   "byStatus": [
+    {
+     "status": "not_started",
+     "count": 2
+    },
+    {
+     "status": "in_progress",
+     "count": 2
+    },
+    {
+     "status": "completed",
+     "count": 1
+    }
+   ],
+   "byAssignee": [
+    {
+     "userId": "USR-004",
+     "name": "CBTD mẫu 01 (đã sửa)",
+     "open": 3,
+     "overdue": 0
+    },
+    {
+     "userId": "USR-006",
+     "name": "CBTD mẫu 03",
+     "open": 1,
+     "overdue": 0
+    }
+   ],
+   "upcoming": [
+    {
+     "taskId": "TSK-001",
+     "taskCode": "CV-TEST-001",
+     "title": "Thẩm định hồ sơ mẫu A",
+     "description": "Thu thập và kiểm tra hồ sơ mẫu",
+     "status": "in_progress",
+     "priority": "high",
+     "dueAt": "2026-10-20",
+     "overdue": false,
+     "archived": false,
+     "customer": {
+      "customerId": "CUS-001",
+      "code": "KH-TEST-001",
+      "name": "Khách hàng mẫu A"
+     },
+     "primary": {
+      "userId": "USR-004",
+      "name": "CBTD mẫu 01 (đã sửa)"
+     },
+     "collaborator": {
+      "userId": "USR-005",
+      "name": "CBTD mẫu 02"
+     },
+     "createdBy": {
+      "userId": "USR-003",
+      "name": "KSV mẫu 01"
+     },
+     "createdAt": "2026-10-13T08:10:00Z",
+     "updatedAt": "2026-10-13T09:30:00Z",
+     "completedAt": null,
+     "approvedProgress": 70,
+     "pendingUpdates": 0
+    },
+    {
+     "taskId": "TSK-002",
+     "taskCode": "CV-TEST-002",
+     "title": "Kiểm tra tài sản bảo đảm mẫu B",
+     "description": "Kiểm tra tài sản theo danh mục mẫu",
+     "status": "in_progress",
+     "priority": "normal",
+     "dueAt": "2026-10-25",
+     "overdue": false,
+     "archived": false,
+     "customer": {
+      "customerId": "CUS-002",
+      "code": "KH-TEST-002",
+      "name": "Công ty mẫu B"
+     },
+     "primary": {
+      "userId": "USR-004",
+      "name": "CBTD mẫu 01 (đã sửa)"
+     },
+     "collaborator": null,
+     "createdBy": {
+      "userId": "USR-004",
+      "name": "CBTD mẫu 01 (đã sửa)"
+     },
+     "createdAt": "2026-10-13T08:20:00Z",
+     "updatedAt": "2026-10-13T12:00:00Z",
+     "completedAt": null,
+     "approvedProgress": 0,
+     "pendingUpdates": 0
+    },
+    {
+     "taskId": "TSK-004",
+     "taskCode": "CV-TEST-004",
+     "title": "Báo cáo tiến độ mẫu D (cập nhật)",
+     "description": "Báo cáo định kỳ mẫu",
+     "status": "not_started",
+     "priority": "high",
+     "dueAt": "2026-11-15",
+     "overdue": false,
+     "archived": false,
+     "customer": {
+      "customerId": "CUS-001",
+      "code": "KH-TEST-001",
+      "name": "Khách hàng mẫu A"
+     },
+     "primary": {
+      "userId": "USR-006",
+      "name": "CBTD mẫu 03"
+     },
+     "collaborator": null,
+     "createdBy": {
+      "userId": "USR-002",
+      "name": "Ban giám đốc mẫu"
+     },
+     "createdAt": "2026-10-13T08:30:00Z",
+     "updatedAt": "2026-10-13T12:00:00Z",
+     "completedAt": null,
+     "approvedProgress": 0,
+     "pendingUpdates": 0
+    },
+    {
+     "taskId": "TSK-005",
+     "taskCode": "CV-0005",
+     "title": "Việc mới của CBTD01",
+     "description": "",
+     "status": "not_started",
+     "priority": "high",
+     "dueAt": "2026-11-30",
+     "overdue": false,
+     "archived": false,
+     "customer": {
+      "customerId": "CUS-001",
+      "code": "KH-TEST-001",
+      "name": "Khách hàng mẫu A"
+     },
+     "primary": {
+      "userId": "USR-004",
+      "name": "CBTD mẫu 01 (đã sửa)"
+     },
+     "collaborator": null,
+     "createdBy": {
+      "userId": "USR-004",
+      "name": "CBTD mẫu 01 (đã sửa)"
+     },
+     "createdAt": "2026-10-13T12:00:00Z",
+     "updatedAt": "2026-10-13T12:00:00Z",
+     "completedAt": null,
+     "approvedProgress": 0,
+     "pendingUpdates": 0
+    }
+   ]
+  },
+  "error": null
+ },
+ {
+  "who": "admin@example.com",
+  "action": "task.list",
+  "params": {
+   "mine": true
+  },
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "items": [],
+   "page": 1,
+   "pageSize": 20,
+   "total": 0
+  },
+  "error": null
+ },
+ {
+  "who": "cbtd02@example.com",
+  "action": "task.list",
+  "params": {
+   "mine": true
+  },
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "items": [
+    {
+     "taskId": "TSK-001",
+     "taskCode": "CV-TEST-001",
+     "title": "Thẩm định hồ sơ mẫu A",
+     "description": "Thu thập và kiểm tra hồ sơ mẫu",
+     "status": "in_progress",
+     "priority": "high",
+     "dueAt": "2026-10-20",
+     "overdue": false,
+     "archived": false,
+     "customer": {
+      "customerId": "CUS-001",
+      "code": "KH-TEST-001",
+      "name": "Khách hàng mẫu A"
+     },
+     "primary": {
+      "userId": "USR-004",
+      "name": "CBTD mẫu 01 (đã sửa)"
+     },
+     "collaborator": {
+      "userId": "USR-005",
+      "name": "CBTD mẫu 02"
+     },
+     "createdBy": {
+      "userId": "USR-003",
+      "name": "KSV mẫu 01"
+     },
+     "createdAt": "2026-10-13T08:10:00Z",
+     "updatedAt": "2026-10-13T09:30:00Z",
+     "completedAt": null,
+     "approvedProgress": 70,
+     "pendingUpdates": 0
+    }
+   ],
+   "page": 1,
+   "pageSize": 20,
+   "total": 1
+  },
+  "error": null
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "task.list",
+  "params": {
+   "assigneeUserId": "cbtd01@example.com",
+   "customerId": "CUS-001"
+  },
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "items": [],
+   "page": 1,
+   "pageSize": 20,
+   "total": 0
+  },
+  "error": null
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "task.list",
+  "params": {
+   "status": "completed",
+   "sortBy": "createdAt",
+   "dir": "desc"
+  },
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "items": [
+    {
+     "taskId": "TSK-003",
+     "taskCode": "CV-TEST-003",
+     "title": "Thu thập hồ sơ tài chính mẫu C",
+     "description": "Thu thập báo cáo tài chính mẫu",
+     "status": "completed",
+     "priority": "high",
+     "dueAt": "2026-10-10",
+     "overdue": false,
+     "archived": false,
+     "customer": {
+      "customerId": "CUS-003",
+      "code": "KH-TEST-003",
+      "name": "Khách hàng mẫu C"
+     },
+     "primary": {
+      "userId": "USR-004",
+      "name": "CBTD mẫu 01 (đã sửa)"
+     },
+     "collaborator": null,
+     "createdBy": {
+      "userId": "USR-001",
+      "name": "Quản trị mẫu"
+     },
+     "createdAt": "2026-10-09T09:00:00Z",
+     "updatedAt": "2026-10-12T10:00:00Z",
+     "completedAt": "2026-10-12T10:00:00Z",
+     "approvedProgress": 100,
+     "pendingUpdates": 0
+    }
+   ],
+   "page": 1,
+   "pageSize": 20,
+   "total": 1
+  },
+  "error": null
+ },
+ {
+  "who": "ksv01@example.com",
+  "action": "task.list",
+  "params": {
+   "sortBy": "updatedAt"
+  },
+  "requestId": null,
+  "ok": true,
+  "data": {
+   "items": [
+    {
+     "taskId": "TSK-003",
+     "taskCode": "CV-TEST-003",
+     "title": "Thu thập hồ sơ tài chính mẫu C",
+     "description": "Thu thập báo cáo tài chính mẫu",
+     "status": "completed",
+     "priority": "high",
+     "dueAt": "2026-10-10",
+     "overdue": false,
+     "archived": false,
+     "customer": {
+      "customerId": "CUS-003",
+      "code": "KH-TEST-003",
+      "name": "Khách hàng mẫu C"
+     },
+     "primary": {
+      "userId": "USR-004",
+      "name": "CBTD mẫu 01 (đã sửa)"
+     },
+     "collaborator": null,
+     "createdBy": {
+      "userId": "USR-001",
+      "name": "Quản trị mẫu"
+     },
+     "createdAt": "2026-10-09T09:00:00Z",
+     "updatedAt": "2026-10-12T10:00:00Z",
+     "completedAt": "2026-10-12T10:00:00Z",
+     "approvedProgress": 100,
+     "pendingUpdates": 0
+    },
+    {
+     "taskId": "TSK-001",
+     "taskCode": "CV-TEST-001",
+     "title": "Thẩm định hồ sơ mẫu A",
+     "description": "Thu thập và kiểm tra hồ sơ mẫu",
+     "status": "in_progress",
+     "priority": "high",
+     "dueAt": "2026-10-20",
+     "overdue": false,
+     "archived": false,
+     "customer": {
+      "customerId": "CUS-001",
+      "code": "KH-TEST-001",
+      "name": "Khách hàng mẫu A"
+     },
+     "primary": {
+      "userId": "USR-004",
+      "name": "CBTD mẫu 01 (đã sửa)"
+     },
+     "collaborator": {
+      "userId": "USR-005",
+      "name": "CBTD mẫu 02"
+     },
+     "createdBy": {
+      "userId": "USR-003",
+      "name": "KSV mẫu 01"
+     },
+     "createdAt": "2026-10-13T08:10:00Z",
+     "updatedAt": "2026-10-13T09:30:00Z",
+     "completedAt": null,
+     "approvedProgress": 70,
+     "pendingUpdates": 0
+    },
+    {
+     "taskId": "TSK-005",
+     "taskCode": "CV-0005",
+     "title": "Việc mới của CBTD01",
+     "description": "",
+     "status": "not_started",
+     "priority": "high",
+     "dueAt": "2026-11-30",
+     "overdue": false,
+     "archived": false,
+     "customer": {
+      "customerId": "CUS-001",
+      "code": "KH-TEST-001",
+      "name": "Khách hàng mẫu A"
+     },
+     "primary": {
+      "userId": "USR-004",
+      "name": "CBTD mẫu 01 (đã sửa)"
+     },
+     "collaborator": null,
+     "createdBy": {
+      "userId": "USR-004",
+      "name": "CBTD mẫu 01 (đã sửa)"
+     },
+     "createdAt": "2026-10-13T12:00:00Z",
+     "updatedAt": "2026-10-13T12:00:00Z",
+     "completedAt": null,
+     "approvedProgress": 0,
+     "pendingUpdates": 0
+    },
+    {
+     "taskId": "TSK-002",
+     "taskCode": "CV-TEST-002",
+     "title": "Kiểm tra tài sản bảo đảm mẫu B",
+     "description": "Kiểm tra tài sản theo danh mục mẫu",
+     "status": "in_progress",
+     "priority": "normal",
+     "dueAt": "2026-10-25",
+     "overdue": false,
+     "archived": false,
+     "customer": {
+      "customerId": "CUS-002",
+      "code": "KH-TEST-002",
+      "name": "Công ty mẫu B"
+     },
+     "primary": {
+      "userId": "USR-004",
+      "name": "CBTD mẫu 01 (đã sửa)"
+     },
+     "collaborator": null,
+     "createdBy": {
+      "userId": "USR-004",
+      "name": "CBTD mẫu 01 (đã sửa)"
+     },
+     "createdAt": "2026-10-13T08:20:00Z",
+     "updatedAt": "2026-10-13T12:00:00Z",
+     "completedAt": null,
+     "approvedProgress": 0,
+     "pendingUpdates": 0
+    },
+    {
+     "taskId": "TSK-004",
+     "taskCode": "CV-TEST-004",
+     "title": "Báo cáo tiến độ mẫu D (cập nhật)",
+     "description": "Báo cáo định kỳ mẫu",
+     "status": "not_started",
+     "priority": "high",
+     "dueAt": "2026-11-15",
+     "overdue": false,
+     "archived": false,
+     "customer": {
+      "customerId": "CUS-001",
+      "code": "KH-TEST-001",
+      "name": "Khách hàng mẫu A"
+     },
+     "primary": {
+      "userId": "USR-006",
+      "name": "CBTD mẫu 03"
+     },
+     "collaborator": null,
+     "createdBy": {
+      "userId": "USR-002",
+      "name": "Ban giám đốc mẫu"
+     },
+     "createdAt": "2026-10-13T08:30:00Z",
+     "updatedAt": "2026-10-13T12:00:00Z",
+     "completedAt": null,
+     "approvedProgress": 0,
+     "pendingUpdates": 0
+    }
+   ],
+   "page": 1,
+   "pageSize": 20,
+   "total": 5
+  },
+  "error": null
+ }
+]
