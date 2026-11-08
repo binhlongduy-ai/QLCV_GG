@@ -2,7 +2,7 @@
 
 ## 0. Kiểm thử cục bộ (không cần Google)
 ```bash
-npm test                 # 33 kiểm thử
+npm test                 # 49 kiểm thử (gồm kiểm thử đặc trưng hành vi characterization)
 npm run serve            # demo tại http://localhost:8080 (DEMO_MODE=true mặc định)
 ```
 
@@ -19,7 +19,11 @@ npm run serve            # demo tại http://localhost:8080 (DEMO_MODE=true mặ
    | `DIRECTOR_EMAILS` | email Giám đốc, cách nhau dấu phẩy |
    | `BACKUP_FOLDER_ID` | thư mục Drive chứa bản sao lưu |
    | `ALLOW_SEED` | `true` chỉ khi nạp dữ liệu mẫu, xong đổi lại `false` |
-4. Chạy lần lượt trong trình soạn thảo: `bootstrapDatabase` → (môi trường thử) `seedDemoData` → `checkIntegrity` → `protectSheets` → `installTriggers` → `showConfig`. Hoặc dùng menu **QLCV** trong Sheet.
+4. Chạy trong trình soạn thảo. **Chọn đúng một nhánh, không chạy cả hai:**
+   - Sheet **thật**: `bootstrapDatabase` (tạo tab, nạp vai trò/quyền, tạo Admin đầu tiên từ `ADMIN_EMAIL`).
+   - Sheet **thử nghiệm**: `seedDemoData` trên sheet trống (tự tạo tab, vai trò/quyền và dữ liệu tổng hợp, kể cả Admin). **Không** chạy `bootstrapDatabase` trước: bootstrap đã tạo Admin ở tab Users nên `seedDemoData` sẽ từ chối (đã tái hiện bằng môi trường giả lập).
+   - Sau đó: `checkIntegrity` → `installTriggers` → `showConfig`. `protectSheets` chạy sau cùng. Hoặc dùng menu **QLCV** trong Sheet.
+   - Quy trình kiểm chứng đầy đủ: xem [VERIFY_GAS.md](VERIFY_GAS.md).
 5. Deploy → New deployment → Web app → Execute as **Me**, Who has access **Anyone**. Sao chép URL `/exec` làm `API_URL`. Mỗi lần đổi mã phải tạo phiên bản triển khai mới.
 
 ## 2. Google OAuth Client ID
