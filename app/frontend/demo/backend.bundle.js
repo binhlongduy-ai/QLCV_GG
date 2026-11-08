@@ -247,17 +247,28 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
 /* ---- 02_Store.js ---- */
 /**
  * Lớp lưu trữ dùng chung. Mọi quy tắc toàn vẹn nằm ở đây, độc lập với nơi lưu (Google Sheets / bộ nhớ / sau này là Postgres):
- *  - khóa chính duy nhất, sinh ID tuần tự;
+ *  - khóa chính duy nhất; sinh ID tuần tự bằng bộ đếm (không quét lại bảng mỗi lần ghi);
+ *  - chỉ mục khóa chính và chỉ mục theo cột (findBy) được CẬP NHẬT TĂNG DẦN khi ghi, không dựng lại toàn bộ;
  *  - cột bất biến (immutable) không được sửa; AuditLogs chỉ được ghi thêm;
  *  - bộ nhớ đệm theo từng request, bản ghi trả về bị đóng băng (chống sửa nhầm).
  *
  * Driver cần cung cấp: read(table) -> [obj], append(table, obj), write(table, index, obj).
+ * Tùy chọn: appendMany(table, [obj]) để ghi nhiều dòng trong một lượt gọi.
+ * Vị trí (index) của một dòng trong mảng rows không đổi vì lớp này không xóa cứng dòng nào.
  */
 (function (Q) {
   'use strict';
   var U = Q.Util;
 
   function freeze(o) { return Object.freeze(o); }
+  function keyOf(v) { return String(v); }
+
+  /** Số thứ tự của một ID dạng PREFIX-123, hoặc null nếu không khớp. */
+  function seqOf(def, id) {
+    if (!def.prefix || typeof id !== 'string') return null;
+    var m = new RegExp('^' + def.prefix + '-(\\d+)$').exec(id);
+    return m ? parseInt(m[1], 10) : null;
+  }
 
   Q.makeStore = function (driver) {
     var cache = {};
@@ -265,17 +276,68 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     function load(t) {
       if (!Q.Schema.tables[t]) U.fail('INTERNAL', 'Bảng không tồn tại: ' + t);
       if (!cache[t]) {
-        cache[t] = { rows: driver.read(t).map(function (r) { return freeze(Q.Schema.normalize(t, r)); }), pk: null, by: {} };
+        cache[t] = {
+          rows: driver.read(t).map(function (r) { return freeze(Q.Schema.normalize(t, r)); }),
+          pk: null,            // khóa chính -> vị trí, dựng lần đầu khi cần
+          by: Object.create(null), // cột -> (giá trị -> danh sách vị trí), dựng theo yêu cầu
+          seq: undefined       // số thứ tự lớn nhất đã dùng, dựng lần đầu khi cần
+        };
       }
       return cache[t];
     }
+
     function pkMap(t) {
       var c = load(t), pk = Q.Schema.tables[t].pk;
       if (!pk) U.fail('INTERNAL', 'Bảng ' + t + ' không có khóa chính.');
-      if (!c.pk) { c.pk = {}; c.rows.forEach(function (r, i) { c.pk[r[pk]] = i; }); }
+      if (!c.pk) {
+        c.pk = Object.create(null);
+        c.rows.forEach(function (r, i) { c.pk[r[pk]] = i; });
+      }
       return c.pk;
     }
-    function dirty(t) { var c = cache[t]; if (c) { c.pk = null; c.by = {}; } }
+
+    function seqOfTable(t, c) {
+      if (c.seq === undefined) {
+        var def = Q.Schema.tables[t], max = 0;
+        c.rows.forEach(function (r) { var n = seqOf(def, r[def.pk]); if (n !== null && n > max) max = n; });
+        c.seq = max;
+      }
+      return c.seq;
+    }
+
+    /** Thêm một dòng mới vào cuối và đưa vào mọi chỉ mục đang có. */
+    function addRow(t, c, row) {
+      var def = Q.Schema.tables[t], i = c.rows.length;
+      c.rows.push(row);
+      if (c.pk && def.pk) c.pk[row[def.pk]] = i;
+      Object.keys(c.by).forEach(function (col) {
+        var m = c.by[col], k = keyOf(row[col]);
+        (m[k] = m[k] || []).push(i);
+      });
+      if (c.seq !== undefined && def.pk) {
+        var n = seqOf(def, row[def.pk]);
+        if (n !== null && n > c.seq) c.seq = n;
+      }
+    }
+
+    /** Chèn vị trí i vào danh sách đã sắp tăng dần, để thứ tự kết quả luôn theo thứ tự dòng (như khi dựng mới). */
+    function insertSorted(list, i) {
+      var lo = 0, hi = list.length;
+      while (lo < hi) { var mid = (lo + hi) >> 1; if (list[mid] < i) lo = mid + 1; else hi = mid; }
+      list.splice(lo, 0, i);
+    }
+
+    /** Sau khi sửa một dòng tại vị trí i: chỉ di chuyển vị trí trong những chỉ mục theo cột có giá trị đổi. */
+    function reindexChanged(c, i, before, after) {
+      Object.keys(c.by).forEach(function (col) {
+        var ko = keyOf(before[col]), kn = keyOf(after[col]);
+        if (ko === kn) return;
+        var m = c.by[col], list = m[ko] || [], at = list.indexOf(i);
+        if (at >= 0) list.splice(at, 1);
+        m[kn] = m[kn] || [];
+        insertSorted(m[kn], i);
+      });
+    }
 
     var S = {
       reset: function () { cache = {}; if (driver.reset) driver.reset(); },
@@ -286,23 +348,42 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
         return i === undefined ? null : load(t).rows[i];
       },
       where: function (t, pred) { return load(t).rows.filter(pred); },
-      /** Tra theo cột bất kỳ bằng chỉ mục dựng theo yêu cầu. */
+      /** Tra theo cột bất kỳ bằng chỉ mục (dựng một lần cho mỗi request, sau đó giữ đồng bộ khi ghi). */
       findBy: function (t, col, val) {
         var c = load(t);
         if (!c.by[col]) {
-          var m = {};
-          c.rows.forEach(function (r) { var k = String(r[col]); (m[k] = m[k] || []).push(r); });
+          var m = Object.create(null);
+          c.rows.forEach(function (r, i) { var k = keyOf(r[col]); (m[k] = m[k] || []).push(i); });
           c.by[col] = m;
         }
-        return c.by[col][String(val)] || [];
+        return (c.by[col][keyOf(val)] || []).map(function (i) { return c.rows[i]; });
       },
       insert: function (t, obj) {
         var def = Q.Schema.tables[t], row = freeze(Q.Schema.normalize(t, obj)), c = load(t);
         if (def.pk && S.find(t, row[def.pk])) U.fail('CONFLICT', 'Khóa ' + row[def.pk] + ' đã tồn tại trong ' + t + '.');
         driver.append(t, row);
-        c.rows.push(row);
-        dirty(t);
+        addRow(t, c, row);
         return row;
+      },
+      /**
+       * Ghi nhiều dòng: kiểm tra trùng khóa TRƯỚC khi ghi dòng nào, rồi gọi driver.appendMany một lần (nếu có).
+       */
+      insertMany: function (t, objs) {
+        var def = Q.Schema.tables[t], c = load(t), rows = [], seen = Object.create(null);
+        objs.forEach(function (o) {
+          var row = freeze(Q.Schema.normalize(t, o));
+          if (def.pk) {
+            var k = row[def.pk];
+            if (seen[k] || S.find(t, k)) U.fail('CONFLICT', 'Khóa ' + k + ' đã tồn tại trong ' + t + '.');
+            seen[k] = true;
+          }
+          rows.push(row);
+        });
+        if (!rows.length) return rows;
+        if (driver.appendMany) driver.appendMany(t, rows);
+        else rows.forEach(function (r) { driver.append(t, r); });
+        rows.forEach(function (r) { addRow(t, c, r); });
+        return rows;
       },
       update: function (t, id, patch) {
         var def = Q.Schema.tables[t];
@@ -321,14 +402,14 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
         var row = freeze(Q.Schema.normalize(t, merged));
         driver.write(t, i, row);
         c.rows[i] = row;
-        dirty(t);
+        if (def.pk && row[def.pk] !== cur[def.pk]) { c.pk = null; c.seq = undefined; }   // khóa đổi: dựng lại hai chỉ mục này
+        reindexChanged(c, i, cur, row);
         return row;
       },
-      /** ID tuần tự dạng PREFIX-001. */
+      /** ID tiếp theo dạng PREFIX-001 (không ghi gì; dùng ngay trước khi insert). */
       nextId: function (t) {
-        var def = Q.Schema.tables[t], max = 0, re = new RegExp('^' + def.prefix + '-(\\d+)$');
-        load(t).rows.forEach(function (r) { var m = re.exec(r[def.pk]); if (m) max = Math.max(max, parseInt(m[1], 10)); });
-        return def.prefix + '-' + U.pad(max + 1, 3);
+        var def = Q.Schema.tables[t];
+        return def.prefix + '-' + U.pad(seqOfTable(t, load(t)) + 1, 3);
       },
       count: function (t) { return load(t).rows.length; }
     };
@@ -439,6 +520,15 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
       sh.appendRow(Q.Schema.toArray(t, obj));
       (rowNums[t] = rowNums[t] || []).push(sh.getLastRow());
     },
+    /** Ghi nhiều dòng bằng MỘT lượt setValues (thay vì appendRow từng dòng). */
+    appendMany: function (t, objs) {
+      if (!objs.length) return;
+      var sh = sheetOf(t), n = Q.Schema.cols(t).length;
+      var start = sh.getLastRow() + 1, arrs = objs.map(function (o) { return Q.Schema.toArray(t, o); });
+      sh.getRange(start, 1, arrs.length, n).setValues(arrs);
+      rowNums[t] = rowNums[t] || [];
+      for (var k = 0; k < arrs.length; k++) rowNums[t].push(start + k);
+    },
     write: function (t, index, obj) {
       var sh = sheetOf(t), rn = rowNums[t] && rowNums[t][index];
       if (!rn) U.fail('INTERNAL', 'Không xác định được dòng cần ghi trong ' + t + '.');
@@ -474,7 +564,7 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     var ck = 'tok:' + Env.sha256(idToken), hit = Env.cacheGet(ck);
     if (hit) { try { return JSON.parse(hit); } catch (e) { /* bỏ qua, xác minh lại */ } }
 
-    var clientId = Env.prop('GOOGLE_CLIENT_ID');
+    var clientId = Env.prop('GOOGLE_CLIENT_ID') || '980548527328-g4aiprfddm1fblgc376iuunrsh9o54j9.apps.googleusercontent.com';
     if (!clientId) U.fail('INTERNAL', 'Máy chủ chưa cấu hình GOOGLE_CLIENT_ID.');
     var r = Env.fetchJson('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(idToken));
     if (r.status !== 200 || !r.json) U.fail('UNAUTHENTICATED', 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn.');
@@ -578,8 +668,18 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
   'use strict';
   var U = Q.Util;
 
+  /** Quy tắc nghiệp vụ dùng chung cho công việc: một nơi duy nhất cho định nghĩa "đang mở" và "trễ hạn". */
+  Q.Rules = {
+    /** Đang mở: chưa hoàn thành và chưa lưu trữ. */
+    isOpen: function (t) { return t.status !== 'completed' && !t.archived_at; },
+    /** Trễ hạn: chưa hoàn thành và hạn trước ngày hôm nay (không xét lưu trữ; xem CODE_REVIEW). */
+    isLate: function (t, today) { return t.status !== 'completed' && t.due_at < today; }
+  };
+
   Q.Audit = {
-    has: function (key) { return Q.Store.findBy('AuditLogs', 'request_or_event_key', key).length > 0; },
+    /** Dòng nhật ký đã ghi với khóa này (dùng để chống ghi trùng khi thử lại), hoặc null. */
+    find: function (key) { return Q.Store.findBy('AuditLogs', 'request_or_event_key', key)[0] || null; },
+    has: function (key) { return Q.Audit.find(key) !== null; },
     /** Ghi thêm một dòng; trả null nếu key đã tồn tại (idempotent). */
     log: function (ctx, action, entityType, entityId, key) {
       if (Q.Audit.has(key)) return null;
@@ -606,48 +706,49 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     }
   };
 
-  function userRef(users, id) {
-    var u = users[id];
+  /** Tham chiếu người dùng cho giao diện; người không còn trong bảng vẫn hiện được theo mã. */
+  function userRef(id) {
+    var u = Q.Store.find('Users', id);
     return u ? { userId: u.user_id, name: u.full_name } : { userId: id, name: id || '' };
   }
-  function userMap() { var m = {}; Q.Store.all('Users').forEach(function (u) { m[u.user_id] = u; }); return m; }
 
   var DTO = Q.DTO = {};
 
+  /** Chuyển công việc sang DTO. Chỉ tra đúng các dòng liên quan qua chỉ mục (không quét cả bảng cho mỗi công việc). */
   DTO.tasks = function (ctx, tasks) {
-    var S = Q.Store, today = U.today(), users = userMap(), cust = {}, asg = {}, approved = {}, pending = {};
-    S.all('Customers').forEach(function (c) { cust[c.customer_id] = c; });
-    S.all('TaskAssignees').forEach(function (a) { if (a.active) (asg[a.task_id] = asg[a.task_id] || []).push(a); });
-    S.all('TaskUpdates').forEach(function (u) {
-      if (u.review_status === 'approved') approved[u.task_id] = Math.max(approved[u.task_id] || 0, u.progress_pct || 0);
-      if (u.review_status === 'pending') pending[u.task_id] = (pending[u.task_id] || 0) + 1;
-    });
+    var S = Q.Store, today = U.today();
     return tasks.map(function (t) {
-      var list = asg[t.task_id] || [], p = null, c = null, k = cust[t.customer_id];
-      list.forEach(function (a) { if (a.assignment_role === 'primary') p = a; else c = a; });
+      var p = null, c = null, k = S.find('Customers', t.customer_id), approved = 0, pending = 0;
+      S.findBy('TaskAssignees', 'task_id', t.task_id).forEach(function (a) {
+        if (!a.active) return;
+        if (a.assignment_role === 'primary') p = a; else c = a;
+      });
+      S.findBy('TaskUpdates', 'task_id', t.task_id).forEach(function (u) {
+        if (u.review_status === 'approved') approved = Math.max(approved, u.progress_pct || 0);
+        if (u.review_status === 'pending') pending++;
+      });
       return {
         taskId: t.task_id, taskCode: t.task_code, title: t.title, description: t.description,
         status: t.status, priority: t.priority, dueAt: t.due_at,
-        overdue: t.status !== 'completed' && !t.archived_at && t.due_at < today,
+        overdue: Q.Rules.isOpen(t) && Q.Rules.isLate(t, today),
         archived: !!t.archived_at,
         customer: k ? { customerId: k.customer_id, code: k.customer_code, name: k.name } : null,
-        primary: p ? userRef(users, p.user_id) : null,
-        collaborator: c ? userRef(users, c.user_id) : null,
-        createdBy: userRef(users, t.created_by_user_id),
+        primary: p ? userRef(p.user_id) : null,
+        collaborator: c ? userRef(c.user_id) : null,
+        createdBy: userRef(t.created_by_user_id),
         createdAt: t.created_at, updatedAt: t.updated_at, completedAt: t.completed_at || null,
-        approvedProgress: approved[t.task_id] || 0, pendingUpdates: pending[t.task_id] || 0
+        approvedProgress: approved, pendingUpdates: pending
       };
     });
   };
 
   DTO.updates = function (updates) {
-    var users = userMap();
     return updates.map(function (u) {
       return {
         updateId: u.update_id, taskId: u.task_id, progressPct: u.progress_pct, narrative: u.narrative,
-        submittedBy: userRef(users, u.submitted_by_user_id), submittedAt: u.submitted_at,
+        submittedBy: userRef(u.submitted_by_user_id), submittedAt: u.submitted_at,
         reviewStatus: u.review_status,
-        reviewedBy: u.reviewed_by_user_id ? userRef(users, u.reviewed_by_user_id) : null,
+        reviewedBy: u.reviewed_by_user_id ? userRef(u.reviewed_by_user_id) : null,
         reviewedAt: u.reviewed_at || null, reviewComment: u.review_comment || ''
       };
     });
@@ -732,7 +833,7 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     if (p.status) tasks = tasks.filter(function (t) { return t.status === p.status; });
     if (p.priority) tasks = tasks.filter(function (t) { return t.priority === p.priority; });
     if (p.customerId) tasks = tasks.filter(function (t) { return t.customer_id === p.customerId; });
-    if (U.bool(p.overdue)) tasks = tasks.filter(function (t) { return t.status !== 'completed' && t.due_at < today; });
+    if (U.bool(p.overdue)) tasks = tasks.filter(function (t) { return Q.Rules.isLate(t, today); });
     if (U.bool(p.mine)) { var mine = P.assignedTaskIds(ctx.user.user_id); tasks = tasks.filter(function (t) { return mine[t.task_id]; }); }
     if (p.assigneeUserId) { var theirs = P.assignedTaskIds(p.assigneeUserId); tasks = tasks.filter(function (t) { return theirs[t.task_id]; }); }
 
@@ -757,10 +858,8 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     P.require(ctx, 'task.view');
     var t = P.taskOrFail(ctx, p && p.taskId);
     var updates = S().findBy('TaskUpdates', 'task_id', t.task_id);
-    var users = {};
-    S().all('Users').forEach(function (u) { users[u.user_id] = u; });
     var history = S().findBy('TaskAssignees', 'task_id', t.task_id).map(function (a) {
-      var u = users[a.user_id];
+      var u = S().find('Users', a.user_id);
       return { assignmentId: a.assignment_id, userId: a.user_id, name: u ? u.full_name : a.assignee_email_snapshot,
         role: a.assignment_role, assignedAt: a.assigned_at, active: a.active };
     });
@@ -785,7 +884,7 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
   T.create = function (ctx, p, meta) {
     P.require(ctx, 'task.create');
     var key = 'evt-task.create-' + meta.requestId;
-    var existing = S().findBy('AuditLogs', 'request_or_event_key', key)[0];
+    var existing = Q.Audit.find(key);
     if (existing) return { task: dtoOf(ctx, existing.entity_id), replayed: true };
 
     var title = U.str(p.title, { field: 'title', label: 'Tiêu đề', required: true, max: L.title });
@@ -925,7 +1024,7 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
   G.submit = function (ctx, p, meta) {
     P.require(ctx, 'progress.submit');
     var key = 'evt-progress.submit-' + meta.requestId;
-    var dup = S().findBy('AuditLogs', 'request_or_event_key', key)[0];
+    var dup = Q.Audit.find(key);
     if (dup) return { update: Q.DTO.updates([S().find('TaskUpdates', dup.entity_id)])[0], replayed: true };
 
     var task = P.taskOrFail(ctx, p.taskId);
@@ -1066,7 +1165,7 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
   C.create = function (ctx, p, meta) {
     P.require(ctx, 'customer.maintain');
     var key = 'evt-customer.create-' + meta.requestId;
-    var dup = S().findBy('AuditLogs', 'request_or_event_key', key)[0];
+    var dup = Q.Audit.find(key);
     if (dup) return { customer: Q.DTO.customer(S().find('Customers', dup.entity_id)), replayed: true };
 
     var f = fields(p, false);
@@ -1139,6 +1238,18 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     return S().all('Users').filter(function (u) { return u.role_id === id && u.status === 'active'; });
   }
 
+  /** Đếm người dùng hoạt động theo vai trò trên TOÀN BỘ bảng (không phụ thuộc trang đang xem). */
+  function userCounts(users, roles) {
+    var c = { active: 0, byRole: {} };
+    users.forEach(function (u) {
+      if (u.status !== 'active') return;
+      c.active++;
+      var r = roles[u.role_id];
+      if (r) c.byRole[r.code] = (c.byRole[r.code] || 0) + 1;
+    });
+    return c;
+  }
+
   var A = Q.AdminService = {};
 
   /* ---------- Người dùng ---------- */
@@ -1153,6 +1264,7 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     var page = U.paginate(rows, p);
     page.items = page.items.map(function (u) { return Q.DTO.user(u, roles); });
     page.roles = Object.keys(roles).map(function (k) { return { roleId: roles[k].role_id, code: roles[k].code, name: roles[k].name }; });
+    page.counts = userCounts(S().all('Users'), roles);
     return page;
   };
 
@@ -1171,7 +1283,7 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
   A.userCreate = function (ctx, p, meta) {
     P.require(ctx, 'user.manage');
     var key = 'evt-user.create-' + meta.requestId;
-    var dup = S().findBy('AuditLogs', 'request_or_event_key', key)[0];
+    var dup = Q.Audit.find(key);
     if (dup) return { user: Q.DTO.user(S().find('Users', dup.entity_id), roleMap()), replayed: true };
 
     var email = U.email(p.email, { field: 'email' });
@@ -1381,13 +1493,12 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
       kpis.pendingReviews = pend.length;
     }
     if (!P.isScoped(ctx)) {
-      var users = {}, rows = {};
-      S().all('Users').forEach(function (u) { users[u.user_id] = u; });
+      var rows = {};
       S().all('TaskAssignees').forEach(function (a) {
         if (!a.active || a.assignment_role !== 'primary' || !visible[a.task_id]) return;
-        var t = S().find('Tasks', a.task_id);
+        var t = S().find('Tasks', a.task_id), u = S().find('Users', a.user_id);
         if (t.status === 'completed') return;
-        var r = rows[a.user_id] = rows[a.user_id] || { userId: a.user_id, name: users[a.user_id] ? users[a.user_id].full_name : a.user_id, open: 0, overdue: 0 };
+        var r = rows[a.user_id] = rows[a.user_id] || { userId: a.user_id, name: u ? u.full_name : a.user_id, open: 0, overdue: 0 };
         r.open++; if (t.due_at < today) r.overdue++;
       });
       out.byAssignee = Object.keys(rows).map(function (k) { return rows[k]; }).sort(function (a, b) { return b.open - a.open; });
@@ -1402,7 +1513,7 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     P.require(ctx, 'dashboard.view_director');
     var today = U.today();
     var rows = P.visibleTasks(ctx).filter(function (t) {
-      return !t.archived_at && t.status !== 'completed' && (t.priority === 'high' || t.due_at < today);
+      return Q.Rules.isOpen(t) && (t.priority === 'high' || Q.Rules.isLate(t, today));
     });
     rows = U.sortBy(rows, function (t) { return (t.due_at < today ? '0' : '1') + t.due_at + t.task_code; }, 'asc');
     var dtos = Q.DTO.tasks(ctx, rows);
@@ -1545,7 +1656,6 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
         throttle(who);
         ctx = Q.Policy.build(user);
       }
-      var run = function () { Q.Store.reset(); return def.fn(ctx, params, { requestId: requestId }); };
       var data;
       if (def.write) {
         data = Env.lock(function () {
@@ -1557,7 +1667,8 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
         });
         Env.flush();
       } else {
-        data = run();
+        // Đọc: dùng bộ đệm đã nạp lúc xác thực (không đặt lại để khỏi đọc lại Users, Roles...).
+        data = def.fn(ctx, params, { requestId: requestId });
       }
       meta.serverTime = U.isoNow();
       if (who) Env.log({ action: action, user: who, ok: true, ms: Env.now().getTime() - t0 });
@@ -1636,9 +1747,7 @@ function doGet(e) { return QLCV.doGet(e); }
     return report;
   };
 
-  function insertAll(table, rows) {
-    rows.forEach(function (r) { Q.Store.insert(table, r); });
-  }
+  function insertAll(table, rows) { Q.Store.insertMany(table, rows); }
 
   Setup.loadReference = function () {
     var R = Q.SeedData.reference;
@@ -2549,6 +2658,7 @@ QLCV.SeedData = {
   Q.MemoryDriver = {
     read: function (t) { return clone(tables[t] || []); },
     append: function (t, row) { (tables[t] = tables[t] || []).push(clone(row)); },
+    appendMany: function (t, rows) { rows.forEach(function (row) { (tables[t] = tables[t] || []).push(clone(row)); }); },
     write: function (t, i, row) { tables[t][i] = clone(row); }
   };
   Q.Store = Q.makeStore(Q.MemoryDriver);

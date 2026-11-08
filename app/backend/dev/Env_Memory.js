@@ -32,6 +32,7 @@
   Q.MemoryDriver = {
     read: function (t) { return clone(tables[t] || []); },
     append: function (t, row) { (tables[t] = tables[t] || []).push(clone(row)); },
+    appendMany: function (t, rows) { rows.forEach(function (row) { (tables[t] = tables[t] || []).push(clone(row)); }); },
     write: function (t, i, row) { tables[t][i] = clone(row); }
   };
   Q.Store = Q.makeStore(Q.MemoryDriver);

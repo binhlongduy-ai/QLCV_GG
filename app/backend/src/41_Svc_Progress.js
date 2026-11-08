@@ -15,7 +15,7 @@
   G.submit = function (ctx, p, meta) {
     P.require(ctx, 'progress.submit');
     var key = 'evt-progress.submit-' + meta.requestId;
-    var dup = S().findBy('AuditLogs', 'request_or_event_key', key)[0];
+    var dup = Q.Audit.find(key);
     if (dup) return { update: Q.DTO.updates([S().find('TaskUpdates', dup.entity_id)])[0], replayed: true };
 
     var task = P.taskOrFail(ctx, p.taskId);

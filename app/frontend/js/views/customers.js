@@ -1,6 +1,6 @@
-import { h, mount, load, spinner, errorState, emptyState, pager, statusBadge, priorityBadge, fmtDate, formDialog, confirmDialog, badge, toast, L, lbl } from '../ui.js';
+import { h, mount, load, listLoader, emptyState, pager, statusBadge, priorityBadge, fmtDate, formDialog, confirmDialog, badge, toast, L, lbl } from '../ui.js';
 import * as api from '../api.js';
-import { opts } from './shared.js';
+import { mapOptions } from './shared.js';
 
 function customerForm(app, c, onDone) {
   const edit = !!c;
@@ -9,17 +9,17 @@ function customerForm(app, c, onDone) {
     intro: 'Không nhập dư nợ hay thông tin tín dụng chi tiết vào hệ thống này.',
     fields: [
       { name: 'name', label: 'Tên khách hàng', type: 'text', required: true, maxlength: 200, value: c && c.name },
-      { name: 'type', label: 'Loại khách hàng', type: 'select', required: true, value: c ? c.type : 'personal', options: opts(Object.entries(L.ctype).map(([k, v]) => ({ k, v })), 'k', 'v') },
+      { name: 'type', label: 'Loại khách hàng', type: 'select', required: true, value: c ? c.type : 'personal', options: mapOptions(L.ctype) },
       // R17: chỉ hiện khi là doanh nghiệp
       { name: 'companyRepresentative', label: 'Người đại diện công ty', type: 'text', maxlength: 200, value: c && c.companyRepresentative, showIf: (v) => v.type === 'business' },
       { name: 'phone', label: 'Số điện thoại', type: 'tel', required: true, maxlength: 20, value: c && c.phone, inputmode: 'tel' },
-      { name: 'status', label: 'Nhóm khách hàng', type: 'select', value: c ? c.status : 'new', options: opts(Object.entries(L.cstatus).map(([k, v]) => ({ k, v })), 'k', 'v') },
+      { name: 'status', label: 'Nhóm khách hàng', type: 'select', value: c ? c.status : 'new', options: mapOptions(L.cstatus) },
       !edit && { name: 'customerCode', label: 'Mã khách hàng (để trống để tự sinh)', type: 'text', maxlength: 30 }
     ].filter(Boolean),
-    onSubmit: async (v) => {
+    onSubmit: async (v, { requestId }) => {
       const p = { name: v.name, type: v.type, phone: v.phone, status: v.status, companyRepresentative: v.type === 'business' ? v.companyRepresentative : '' };
-      if (edit) await api.call('customer.update', { customerId: c.customerId, ...p });
-      else await api.call('customer.create', { ...p, customerCode: v.customerCode || undefined });
+      if (edit) await api.call('customer.update', { customerId: c.customerId, ...p }, { requestId });
+      else await api.call('customer.create', { ...p, customerCode: v.customerCode || undefined }, { requestId });
       toast(edit ? 'Đã lưu' : 'Đã thêm khách hàng', 'ok'); onDone();
     }
   });
@@ -29,11 +29,8 @@ export async function customerListView(app, root) {
   const f = { q: '', type: '', page: 1 };
   const results = h('div');
   let timer;
-  const fetchPage = async () => {
-    mount(results, spinner());
-    try {
-      const res = await api.call('customer.list', { q: f.q, type: f.type, page: f.page, pageSize: 20 });
-      mount(results, res.total ? h('div', null,
+  const fetchPage = listLoader(results, () => api.call('customer.list', { q: f.q, type: f.type, page: f.page, pageSize: 20 }), (res) =>
+      res.total ? h('div', null,
         h('table', { class: 'tbl rwd' }, h('thead', null, h('tr', null, ['Mã', 'Tên', 'Loại', 'Điện thoại', 'Nhóm'].map((x) => h('th', null, x)))),
           h('tbody', null, res.items.map((c) => h('tr', null,
             h('td', { 'data-label': 'Mã' }, h('a', { href: '#/customers/' + c.customerId }, c.customerCode)),
@@ -43,8 +40,6 @@ export async function customerListView(app, root) {
         pager(res, (p) => { f.page = p; fetchPage(); }))
         : emptyState(f.q || f.type ? 'Không có khách hàng nào khớp.' : 'Không có khách hàng nào bạn được phép xem.',
           app.me.role.code === 'CBTD' ? 'Bạn chỉ thấy khách hàng gắn với công việc được giao cho mình.' : app.can('customer.maintain') ? 'Hãy thêm khách hàng đầu tiên.' : null));
-    } catch (e) { if (e.code !== 'UNAUTHENTICATED') mount(results, errorState(e, fetchPage)); }
-  };
   mount(root, h('div', null,
     h('div', { class: 'page-h' }, h('h1', null, 'Khách hàng'),
       app.can('customer.maintain') && h('button', { class: 'btn primary', onclick: () => customerForm(app, null, fetchPage) }, '+ Thêm khách hàng')),

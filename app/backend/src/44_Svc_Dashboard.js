@@ -53,13 +53,12 @@
       kpis.pendingReviews = pend.length;
     }
     if (!P.isScoped(ctx)) {
-      var users = {}, rows = {};
-      S().all('Users').forEach(function (u) { users[u.user_id] = u; });
+      var rows = {};
       S().all('TaskAssignees').forEach(function (a) {
         if (!a.active || a.assignment_role !== 'primary' || !visible[a.task_id]) return;
-        var t = S().find('Tasks', a.task_id);
+        var t = S().find('Tasks', a.task_id), u = S().find('Users', a.user_id);
         if (t.status === 'completed') return;
-        var r = rows[a.user_id] = rows[a.user_id] || { userId: a.user_id, name: users[a.user_id] ? users[a.user_id].full_name : a.user_id, open: 0, overdue: 0 };
+        var r = rows[a.user_id] = rows[a.user_id] || { userId: a.user_id, name: u ? u.full_name : a.user_id, open: 0, overdue: 0 };
         r.open++; if (t.due_at < today) r.overdue++;
       });
       out.byAssignee = Object.keys(rows).map(function (k) { return rows[k]; }).sort(function (a, b) { return b.open - a.open; });
@@ -74,7 +73,7 @@
     P.require(ctx, 'dashboard.view_director');
     var today = U.today();
     var rows = P.visibleTasks(ctx).filter(function (t) {
-      return !t.archived_at && t.status !== 'completed' && (t.priority === 'high' || t.due_at < today);
+      return Q.Rules.isOpen(t) && (t.priority === 'high' || Q.Rules.isLate(t, today));
     });
     rows = U.sortBy(rows, function (t) { return (t.due_at < today ? '0' : '1') + t.due_at + t.task_code; }, 'asc');
     var dtos = Q.DTO.tasks(ctx, rows);

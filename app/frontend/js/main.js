@@ -125,7 +125,7 @@ async function showLogin(message) {
       const users = await api.demoUsers();
       mount(box, h('p', { class: 'muted' }, 'Chọn một tài khoản mẫu để xem giao diện theo từng vai trò:'),
         h('div', { class: 'demo-users' }, users.map((u) => h('button', { class: 'demo-user', onclick: () => { auth.signInDemo(u.email); start(); } },
-          h('span', { class: 'du-n' }, u.name), h('span', { class: 'du-r' }, lbl(L.role, u.role) + (u.email === 'bgd@example.com' ? ' · Giám đốc' : ''))))));
+          h('span', { class: 'du-n' }, u.name), h('span', { class: 'du-r' }, lbl(L.role, u.role) + (u.isDirector ? ' · Giám đốc' : ''))))));
     } catch (e) { mount(box, errorState(e, () => showLogin())); }
     return;
   }

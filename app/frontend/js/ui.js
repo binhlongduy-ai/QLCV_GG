@@ -1,6 +1,8 @@
 // Thư viện UI nhỏ, không phụ thuộc framework. Quy ước an toàn: dữ liệu luôn vào DOM qua textContent
 // (h() chuyển chuỗi thành text node) – không dùng innerHTML với dữ liệu để chặn XSS.
 
+import { newRequestId } from './ids.js';
+
 export function h(tag, props, ...kids) {
   const el = document.createElement(tag);
   let pendingValue;
@@ -98,6 +100,19 @@ export async function load(root, loader, render) {
   return run();
 }
 
+/**
+ * Khu vực danh sách: mỗi lần gọi run() hiện trạng thái đang tải, rồi vẽ kết quả hoặc hiện lỗi kèm nút thử lại.
+ * Lỗi UNAUTHENTICATED không hiện ở đây vì lớp api đã chuyển người dùng về màn đăng nhập.
+ */
+export function listLoader(results, loader, render) {
+  const run = async () => {
+    mount(results, spinner());
+    try { mount(results, render(await loader(), run)); }
+    catch (e) { if (e.code !== 'UNAUTHENTICATED') mount(results, errorState(e, run)); }
+  };
+  return run;
+}
+
 export function pager(res, onPage) {
   const pages = Math.max(1, Math.ceil(res.total / res.pageSize));
   if (pages <= 1) return h('div', { class: 'pager' }, h('span', { class: 'muted' }, `${res.total} bản ghi`));
@@ -145,6 +160,8 @@ export function confirmDialog(title, message, okLabel, danger) {
  */
 export function formDialog({ title, fields, submitLabel, onSubmit, intro }) {
   const wraps = {}, inputs = {}, errs = {};
+  // Một requestId cho cả biểu mẫu: gửi lại sau lỗi mạng không tạo bản ghi thứ hai.
+  const requestId = newRequestId();
   const banner = h('div', { class: 'form-err', role: 'alert', hidden: true });
   const form = h('form', { novalidate: true, class: 'form' });
 
@@ -199,7 +216,7 @@ export function formDialog({ title, fields, submitLabel, onSubmit, intro }) {
       }
     }
     submit.disabled = true; submit.textContent = 'Đang lưu…';
-    try { await onSubmit(v); d.close(); }
+    try { await onSubmit(v, { requestId }); d.close(); }
     catch (err) {
       const fld = err.details && err.details.field;
       if (fld && errs[fld]) { errs[fld].textContent = err.message; errs[fld].hidden = false; inputs[fld].focus(); }

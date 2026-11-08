@@ -59,6 +59,15 @@
       sh.appendRow(Q.Schema.toArray(t, obj));
       (rowNums[t] = rowNums[t] || []).push(sh.getLastRow());
     },
+    /** Ghi nhiều dòng bằng MỘT lượt setValues (thay vì appendRow từng dòng). */
+    appendMany: function (t, objs) {
+      if (!objs.length) return;
+      var sh = sheetOf(t), n = Q.Schema.cols(t).length;
+      var start = sh.getLastRow() + 1, arrs = objs.map(function (o) { return Q.Schema.toArray(t, o); });
+      sh.getRange(start, 1, arrs.length, n).setValues(arrs);
+      rowNums[t] = rowNums[t] || [];
+      for (var k = 0; k < arrs.length; k++) rowNums[t].push(start + k);
+    },
     write: function (t, index, obj) {
       var sh = sheetOf(t), rn = rowNums[t] && rowNums[t][index];
       if (!rn) U.fail('INTERNAL', 'Không xác định được dòng cần ghi trong ' + t + '.');

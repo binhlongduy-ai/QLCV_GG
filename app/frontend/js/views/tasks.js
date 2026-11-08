@@ -1,6 +1,6 @@
-import { h, mount, load, spinner, errorState, emptyState, pager, statusBadge, priorityBadge, fmtDate, fmtDateTime, todayYmd, formDialog, confirmDialog, toast, L, lbl } from '../ui.js';
+import { h, mount, load, listLoader, emptyState, pager, statusBadge, priorityBadge, fmtDate, fmtDateTime, todayYmd, formDialog, confirmDialog, toast, L, lbl } from '../ui.js';
 import * as api from '../api.js';
-import { opts, updateItem, progressBar } from './shared.js';
+import { opts, mapOptions, userLabel, updateItem, progressBar } from './shared.js';
 
 /* ---------- Danh sách ---------- */
 export async function taskListView(app, root, _p, query, afterRender) {
@@ -9,13 +9,9 @@ export async function taskListView(app, root, _p, query, afterRender) {
   const results = h('div');
   let timer;
 
-  const fetchPage = async () => {
-    mount(results, spinner());
-    try {
-      const res = await api.call('task.list', { q: f.q, status: f.status, priority: f.priority, overdue: f.overdue, mine: f.mine, page: f.page, pageSize: 20 });
-      mount(results, renderResults(res));
-    } catch (e) { if (e.code !== 'UNAUTHENTICATED') mount(results, errorState(e, fetchPage)); }
-  };
+  const fetchPage = listLoader(results,
+    () => api.call('task.list', { q: f.q, status: f.status, priority: f.priority, overdue: f.overdue, mine: f.mine, page: f.page, pageSize: 20 }),
+    (res) => renderResults(res));
   const set = (k, v) => { f[k] = v; f.page = 1; fetchPage(); };
 
   function renderResults(res) {
@@ -73,15 +69,15 @@ export async function taskNewView(app, root, p, query) {
             hint: cust.total > cust.items.length ? `Đang hiển thị ${cust.items.length}/${cust.total} khách hàng đầu theo tên.` : null },
           { name: 'title', label: 'Tiêu đề', type: 'text', required: true, maxlength: 200 },
           { name: 'description', label: 'Mô tả', type: 'textarea', maxlength: 2000 },
-          { name: 'priority', label: 'Mức ưu tiên', type: 'select', value: 'normal', options: opts(Object.entries(L.priority).map(([k, v]) => ({ k, v })), 'k', 'v') },
+          { name: 'priority', label: 'Mức ưu tiên', type: 'select', value: 'normal', options: mapOptions(L.priority) },
           { name: 'dueAt', label: 'Hạn xử lý', type: 'date', required: true, min: todayYmd() },
           { name: 'primaryUserId', label: 'Cán bộ phụ trách chính', type: 'select', required: true, value: scoped ? app.me.user.userId : '',
-            options: opts(users.items, 'userId', (u) => `${u.fullName} (${u.employeeCode})`, scoped ? undefined : '— Chọn cán bộ —') },
-          !scoped && { name: 'collaboratorUserId', label: 'Cán bộ phối hợp (tùy chọn)', type: 'select', options: opts(users.items, 'userId', (u) => `${u.fullName} (${u.employeeCode})`, '— Không —') }
+            options: opts(users.items, 'userId', userLabel, scoped ? undefined : '— Chọn cán bộ —') },
+          !scoped && { name: 'collaboratorUserId', label: 'Cán bộ phối hợp (tùy chọn)', type: 'select', options: opts(users.items, 'userId', userLabel, '— Không —') }
         ].filter(Boolean),
-        onSubmit: async (v) => {
+        onSubmit: async (v, { requestId }) => {
           const r = await api.call('task.create', { customerId: v.customerId, title: v.title, description: v.description, priority: v.priority,
-            dueAt: v.dueAt, primaryUserId: v.primaryUserId || undefined, collaboratorUserId: v.collaboratorUserId || undefined });
+            dueAt: v.dueAt, primaryUserId: v.primaryUserId || undefined, collaboratorUserId: v.collaboratorUserId || undefined }, { requestId });
           toast('Đã tạo công việc ' + r.task.taskCode, 'ok');
           app.go('#/tasks/' + r.task.taskId);
         }
@@ -138,7 +134,7 @@ export async function taskDetailView(app, root, [taskId]) {
         { name: 'progressPct', label: 'Tiến độ lũy kế', type: 'range', min: 0, max: 100, step: 1, value: t.approvedProgress, required: true },
         { name: 'narrative', label: 'Diễn giải kết quả', type: 'textarea', required: true, maxlength: 2000 }
       ],
-      onSubmit: async (v) => { await api.call('progress.submit', { taskId: t.taskId, progressPct: Number(v.progressPct), narrative: v.narrative }); toast('Đã gửi báo cáo, chờ KSV duyệt', 'ok'); reload(); }
+      onSubmit: async (v, { requestId }) => { await api.call('progress.submit', { taskId: t.taskId, progressPct: Number(v.progressPct), narrative: v.narrative }, { requestId }); toast('Đã gửi báo cáo, chờ KSV duyệt', 'ok'); reload(); }
     });
   }
 
@@ -148,12 +144,12 @@ export async function taskDetailView(app, root, [taskId]) {
       fields: [
         { name: 'title', label: 'Tiêu đề', type: 'text', required: true, value: t.title, maxlength: 200 },
         { name: 'description', label: 'Mô tả', type: 'textarea', value: t.description, maxlength: 2000 },
-        { name: 'priority', label: 'Mức ưu tiên', type: 'select', value: t.priority, options: opts(Object.entries(L.priority).map(([k, v]) => ({ k, v })), 'k', 'v') },
+        { name: 'priority', label: 'Mức ưu tiên', type: 'select', value: t.priority, options: mapOptions(L.priority) },
         { name: 'dueAt', label: 'Hạn xử lý', type: 'date', required: true, value: t.dueAt },
         { name: 'status', label: 'Trạng thái', type: 'select', value: t.status, hint: 'Trạng thái "Đã hoàn thành" chỉ được đặt tự động khi duyệt tiến độ 100%.',
           options: opts([['not_started', 'Chưa làm'], ['in_progress', 'Đang thực hiện']].map(([k, v]) => ({ k, v })), 'k', 'v') }
       ],
-      onSubmit: async (v) => { await api.call('task.update', { taskId: t.taskId, title: v.title, description: v.description, priority: v.priority, dueAt: v.dueAt, status: v.status }); toast('Đã lưu', 'ok'); reload(); }
+      onSubmit: async (v, { requestId }) => { await api.call('task.update', { taskId: t.taskId, title: v.title, description: v.description, priority: v.priority, dueAt: v.dueAt, status: v.status }, { requestId }); toast('Đã lưu', 'ok'); reload(); }
     });
   }
 
@@ -164,8 +160,8 @@ export async function taskDetailView(app, root, [taskId]) {
     formDialog({
       title: 'Chuyển giao người phụ trách chính', submitLabel: 'Chuyển giao',
       intro: 'Người mới sẽ nhận thông báo. Nếu người đó đang phối hợp, họ sẽ chuyển thành người chính.',
-      fields: [{ name: 'newPrimaryUserId', label: 'Cán bộ nhận việc', type: 'select', required: true, options: opts(users, 'userId', (u) => `${u.fullName} (${u.employeeCode})`, '— Chọn cán bộ —') }],
-      onSubmit: async (v) => { await api.call('task.transfer', { taskId: t.taskId, newPrimaryUserId: v.newPrimaryUserId }); toast('Đã chuyển giao', 'ok'); reload(); }
+      fields: [{ name: 'newPrimaryUserId', label: 'Cán bộ nhận việc', type: 'select', required: true, options: opts(users, 'userId', userLabel, '— Chọn cán bộ —') }],
+      onSubmit: async (v, { requestId }) => { await api.call('task.transfer', { taskId: t.taskId, newPrimaryUserId: v.newPrimaryUserId }, { requestId }); toast('Đã chuyển giao', 'ok'); reload(); }
     });
   }
 
@@ -173,8 +169,8 @@ export async function taskDetailView(app, root, [taskId]) {
     const users = (await pickUsers()).filter((u) => !t.primary || u.userId !== t.primary.userId);
     formDialog({
       title: 'Người phối hợp',
-      fields: [{ name: 'userId', label: 'Cán bộ phối hợp', type: 'select', value: t.collaborator ? t.collaborator.userId : '', options: opts(users, 'userId', (u) => `${u.fullName} (${u.employeeCode})`, '— Không có —') }],
-      onSubmit: async (v) => { await api.call('task.setCollaborator', { taskId: t.taskId, userId: v.userId || null }); toast('Đã cập nhật', 'ok'); reload(); }
+      fields: [{ name: 'userId', label: 'Cán bộ phối hợp', type: 'select', value: t.collaborator ? t.collaborator.userId : '', options: opts(users, 'userId', userLabel, '— Không có —') }],
+      onSubmit: async (v, { requestId }) => { await api.call('task.setCollaborator', { taskId: t.taskId, userId: v.userId || null }, { requestId }); toast('Đã cập nhật', 'ok'); reload(); }
     });
   }
 }

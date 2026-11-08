@@ -86,7 +86,6 @@
         throttle(who);
         ctx = Q.Policy.build(user);
       }
-      var run = function () { Q.Store.reset(); return def.fn(ctx, params, { requestId: requestId }); };
       var data;
       if (def.write) {
         data = Env.lock(function () {
@@ -98,7 +97,8 @@
         });
         Env.flush();
       } else {
-        data = run();
+        // Đọc: dùng bộ đệm đã nạp lúc xác thực (không đặt lại để khỏi đọc lại Users, Roles...).
+        data = def.fn(ctx, params, { requestId: requestId });
       }
       meta.serverTime = U.isoNow();
       if (who) Env.log({ action: action, user: who, ok: true, ms: Env.now().getTime() - t0 });

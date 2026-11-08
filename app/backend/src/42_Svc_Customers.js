@@ -47,7 +47,7 @@
   C.create = function (ctx, p, meta) {
     P.require(ctx, 'customer.maintain');
     var key = 'evt-customer.create-' + meta.requestId;
-    var dup = S().findBy('AuditLogs', 'request_or_event_key', key)[0];
+    var dup = Q.Audit.find(key);
     if (dup) return { customer: Q.DTO.customer(S().find('Customers', dup.entity_id)), replayed: true };
 
     var f = fields(p, false);

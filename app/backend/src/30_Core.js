@@ -6,8 +6,18 @@
   'use strict';
   var U = Q.Util;
 
+  /** Quy tắc nghiệp vụ dùng chung cho công việc: một nơi duy nhất cho định nghĩa "đang mở" và "trễ hạn". */
+  Q.Rules = {
+    /** Đang mở: chưa hoàn thành và chưa lưu trữ. */
+    isOpen: function (t) { return t.status !== 'completed' && !t.archived_at; },
+    /** Trễ hạn: chưa hoàn thành và hạn trước ngày hôm nay (không xét lưu trữ; xem CODE_REVIEW). */
+    isLate: function (t, today) { return t.status !== 'completed' && t.due_at < today; }
+  };
+
   Q.Audit = {
-    has: function (key) { return Q.Store.findBy('AuditLogs', 'request_or_event_key', key).length > 0; },
+    /** Dòng nhật ký đã ghi với khóa này (dùng để chống ghi trùng khi thử lại), hoặc null. */
+    find: function (key) { return Q.Store.findBy('AuditLogs', 'request_or_event_key', key)[0] || null; },
+    has: function (key) { return Q.Audit.find(key) !== null; },
     /** Ghi thêm một dòng; trả null nếu key đã tồn tại (idempotent). */
     log: function (ctx, action, entityType, entityId, key) {
       if (Q.Audit.has(key)) return null;
@@ -34,48 +44,49 @@
     }
   };
 
-  function userRef(users, id) {
-    var u = users[id];
+  /** Tham chiếu người dùng cho giao diện; người không còn trong bảng vẫn hiện được theo mã. */
+  function userRef(id) {
+    var u = Q.Store.find('Users', id);
     return u ? { userId: u.user_id, name: u.full_name } : { userId: id, name: id || '' };
   }
-  function userMap() { var m = {}; Q.Store.all('Users').forEach(function (u) { m[u.user_id] = u; }); return m; }
 
   var DTO = Q.DTO = {};
 
+  /** Chuyển công việc sang DTO. Chỉ tra đúng các dòng liên quan qua chỉ mục (không quét cả bảng cho mỗi công việc). */
   DTO.tasks = function (ctx, tasks) {
-    var S = Q.Store, today = U.today(), users = userMap(), cust = {}, asg = {}, approved = {}, pending = {};
-    S.all('Customers').forEach(function (c) { cust[c.customer_id] = c; });
-    S.all('TaskAssignees').forEach(function (a) { if (a.active) (asg[a.task_id] = asg[a.task_id] || []).push(a); });
-    S.all('TaskUpdates').forEach(function (u) {
-      if (u.review_status === 'approved') approved[u.task_id] = Math.max(approved[u.task_id] || 0, u.progress_pct || 0);
-      if (u.review_status === 'pending') pending[u.task_id] = (pending[u.task_id] || 0) + 1;
-    });
+    var S = Q.Store, today = U.today();
     return tasks.map(function (t) {
-      var list = asg[t.task_id] || [], p = null, c = null, k = cust[t.customer_id];
-      list.forEach(function (a) { if (a.assignment_role === 'primary') p = a; else c = a; });
+      var p = null, c = null, k = S.find('Customers', t.customer_id), approved = 0, pending = 0;
+      S.findBy('TaskAssignees', 'task_id', t.task_id).forEach(function (a) {
+        if (!a.active) return;
+        if (a.assignment_role === 'primary') p = a; else c = a;
+      });
+      S.findBy('TaskUpdates', 'task_id', t.task_id).forEach(function (u) {
+        if (u.review_status === 'approved') approved = Math.max(approved, u.progress_pct || 0);
+        if (u.review_status === 'pending') pending++;
+      });
       return {
         taskId: t.task_id, taskCode: t.task_code, title: t.title, description: t.description,
         status: t.status, priority: t.priority, dueAt: t.due_at,
-        overdue: t.status !== 'completed' && !t.archived_at && t.due_at < today,
+        overdue: Q.Rules.isOpen(t) && Q.Rules.isLate(t, today),
         archived: !!t.archived_at,
         customer: k ? { customerId: k.customer_id, code: k.customer_code, name: k.name } : null,
-        primary: p ? userRef(users, p.user_id) : null,
-        collaborator: c ? userRef(users, c.user_id) : null,
-        createdBy: userRef(users, t.created_by_user_id),
+        primary: p ? userRef(p.user_id) : null,
+        collaborator: c ? userRef(c.user_id) : null,
+        createdBy: userRef(t.created_by_user_id),
         createdAt: t.created_at, updatedAt: t.updated_at, completedAt: t.completed_at || null,
-        approvedProgress: approved[t.task_id] || 0, pendingUpdates: pending[t.task_id] || 0
+        approvedProgress: approved, pendingUpdates: pending
       };
     });
   };
 
   DTO.updates = function (updates) {
-    var users = userMap();
     return updates.map(function (u) {
       return {
         updateId: u.update_id, taskId: u.task_id, progressPct: u.progress_pct, narrative: u.narrative,
-        submittedBy: userRef(users, u.submitted_by_user_id), submittedAt: u.submitted_at,
+        submittedBy: userRef(u.submitted_by_user_id), submittedAt: u.submitted_at,
         reviewStatus: u.review_status,
-        reviewedBy: u.reviewed_by_user_id ? userRef(users, u.reviewed_by_user_id) : null,
+        reviewedBy: u.reviewed_by_user_id ? userRef(u.reviewed_by_user_id) : null,
         reviewedAt: u.reviewed_at || null, reviewComment: u.review_comment || ''
       };
     });

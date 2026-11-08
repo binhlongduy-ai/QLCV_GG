@@ -21,7 +21,7 @@
     if (p.status) tasks = tasks.filter(function (t) { return t.status === p.status; });
     if (p.priority) tasks = tasks.filter(function (t) { return t.priority === p.priority; });
     if (p.customerId) tasks = tasks.filter(function (t) { return t.customer_id === p.customerId; });
-    if (U.bool(p.overdue)) tasks = tasks.filter(function (t) { return t.status !== 'completed' && t.due_at < today; });
+    if (U.bool(p.overdue)) tasks = tasks.filter(function (t) { return Q.Rules.isLate(t, today); });
     if (U.bool(p.mine)) { var mine = P.assignedTaskIds(ctx.user.user_id); tasks = tasks.filter(function (t) { return mine[t.task_id]; }); }
     if (p.assigneeUserId) { var theirs = P.assignedTaskIds(p.assigneeUserId); tasks = tasks.filter(function (t) { return theirs[t.task_id]; }); }
 
@@ -46,10 +46,8 @@
     P.require(ctx, 'task.view');
     var t = P.taskOrFail(ctx, p && p.taskId);
     var updates = S().findBy('TaskUpdates', 'task_id', t.task_id);
-    var users = {};
-    S().all('Users').forEach(function (u) { users[u.user_id] = u; });
     var history = S().findBy('TaskAssignees', 'task_id', t.task_id).map(function (a) {
-      var u = users[a.user_id];
+      var u = S().find('Users', a.user_id);
       return { assignmentId: a.assignment_id, userId: a.user_id, name: u ? u.full_name : a.assignee_email_snapshot,
         role: a.assignment_role, assignedAt: a.assigned_at, active: a.active };
     });
@@ -74,7 +72,7 @@
   T.create = function (ctx, p, meta) {
     P.require(ctx, 'task.create');
     var key = 'evt-task.create-' + meta.requestId;
-    var existing = S().findBy('AuditLogs', 'request_or_event_key', key)[0];
+    var existing = Q.Audit.find(key);
     if (existing) return { task: dtoOf(ctx, existing.entity_id), replayed: true };
 
     var title = U.str(p.title, { field: 'title', label: 'Tiêu đề', required: true, max: L.title });

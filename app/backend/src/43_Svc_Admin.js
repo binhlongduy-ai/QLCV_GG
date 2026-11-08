@@ -17,6 +17,18 @@
     return S().all('Users').filter(function (u) { return u.role_id === id && u.status === 'active'; });
   }
 
+  /** Đếm người dùng hoạt động theo vai trò trên TOÀN BỘ bảng (không phụ thuộc trang đang xem). */
+  function userCounts(users, roles) {
+    var c = { active: 0, byRole: {} };
+    users.forEach(function (u) {
+      if (u.status !== 'active') return;
+      c.active++;
+      var r = roles[u.role_id];
+      if (r) c.byRole[r.code] = (c.byRole[r.code] || 0) + 1;
+    });
+    return c;
+  }
+
   var A = Q.AdminService = {};
 
   /* ---------- Người dùng ---------- */
@@ -31,6 +43,7 @@
     var page = U.paginate(rows, p);
     page.items = page.items.map(function (u) { return Q.DTO.user(u, roles); });
     page.roles = Object.keys(roles).map(function (k) { return { roleId: roles[k].role_id, code: roles[k].code, name: roles[k].name }; });
+    page.counts = userCounts(S().all('Users'), roles);
     return page;
   };
 
@@ -49,7 +62,7 @@
   A.userCreate = function (ctx, p, meta) {
     P.require(ctx, 'user.manage');
     var key = 'evt-user.create-' + meta.requestId;
-    var dup = S().findBy('AuditLogs', 'request_or_event_key', key)[0];
+    var dup = Q.Audit.find(key);
     if (dup) return { user: Q.DTO.user(S().find('Users', dup.entity_id), roleMap()), replayed: true };
 
     var email = U.email(p.email, { field: 'email' });

@@ -3,6 +3,10 @@ import * as api from '../api.js';
 
 export const opts = (items, value, label, blank) =>
   (blank ? [{ value: '', label: blank }] : []).concat(items.map((i) => ({ value: i[value], label: typeof label === 'function' ? label(i) : i[label] })));
+/** Lựa chọn từ một bảng nhãn {mã: nhãn}, ví dụ L.priority. */
+export const mapOptions = (map, blank) => opts(Object.entries(map).map(([k, v]) => ({ k, v })), 'k', 'v', blank);
+/** Nhãn hiển thị một cán bộ trong danh sách chọn. */
+export const userLabel = (u) => `${u.fullName} (${u.employeeCode})`;
 
 export async function approve(u, done) {
   const msg = `Duyệt báo cáo tiến độ ${u.progressPct}% của ${u.submittedBy.name}?` +
@@ -17,7 +21,7 @@ export function reject(u, done) {
     title: 'Từ chối báo cáo tiến độ', submitLabel: 'Từ chối',
     intro: 'Lý do sẽ được hiển thị cho cán bộ gửi báo cáo; báo cáo vẫn được lưu trong lịch sử.',
     fields: [{ name: 'comment', label: 'Lý do từ chối', type: 'textarea', required: true, maxlength: 1000 }],
-    onSubmit: async (v) => { await api.call('progress.review', { updateId: u.updateId, decision: 'reject', comment: v.comment }); toast('Đã từ chối báo cáo', 'ok'); done(); }
+    onSubmit: async (v, { requestId }) => { await api.call('progress.review', { updateId: u.updateId, decision: 'reject', comment: v.comment }, { requestId }); toast('Đã từ chối báo cáo', 'ok'); done(); }
   });
 }
 

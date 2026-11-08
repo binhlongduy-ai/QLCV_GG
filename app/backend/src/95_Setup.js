@@ -37,9 +37,7 @@
     return report;
   };
 
-  function insertAll(table, rows) {
-    rows.forEach(function (r) { Q.Store.insert(table, r); });
-  }
+  function insertAll(table, rows) { Q.Store.insertMany(table, rows); }
 
   Setup.loadReference = function () {
     var R = Q.SeedData.reference;
