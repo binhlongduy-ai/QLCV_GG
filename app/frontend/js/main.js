@@ -162,6 +162,11 @@ async function start() {
   route();
 }
 
+// PWA: đăng ký service worker (chỉ trên HTTPS hoặc localhost). Lỗi đăng ký không ảnh hưởng ứng dụng.
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+}
+
 auth.onSessionExpired(() => { me = null; shell = null; showLogin('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.'); });
 window.addEventListener('hashchange', route);
 document.addEventListener('visibilitychange', () => { if (!document.hidden && me) refreshBell(); });

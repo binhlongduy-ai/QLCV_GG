@@ -1,32 +1,14 @@
-// Thư viện UI nhỏ, không phụ thuộc framework. Quy ước an toàn: dữ liệu luôn vào DOM qua textContent
-// (h() chuyển chuỗi thành text node) – không dùng innerHTML với dữ liệu để chặn XSS.
+// Lớp tương thích cho các view: giữ nguyên chữ ký hàm cũ, ủy quyền sang thư viện thành phần (js/components).
+// Quy ước an toàn: dữ liệu luôn vào DOM qua textContent (h() chuyển chuỗi thành text node) – không dùng innerHTML.
+// Thành phần mới nên dùng trực tiếp từ './components/index.js'; xem docs/COMPONENTS.md.
 
 import { newRequestId } from './ids.js';
+import {
+  h, clear, mount, Spinner, EmptyState, ErrorState, AsyncView, Pagination, toast as showToast,
+  Dialog, confirm, FormDialog, Badge, Kpi
+} from './components/index.js';
 
-export function h(tag, props, ...kids) {
-  const el = document.createElement(tag);
-  let pendingValue;
-  for (const [k, v] of Object.entries(props || {})) {
-    if (v === null || v === undefined || v === false) continue;
-    if (k === 'class') el.className = v;
-    else if (k === 'dataset') Object.assign(el.dataset, v);
-    else if (k === 'value') pendingValue = v;          // đặt sau khi có <option>
-    else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2).toLowerCase(), v);
-    else if (v === true) el.setAttribute(k, '');
-    else el.setAttribute(k, v);
-  }
-  const add = (c) => {
-    if (c === null || c === undefined || c === false) return;
-    if (Array.isArray(c)) c.forEach(add);
-    else el.appendChild(c instanceof Node ? c : document.createTextNode(String(c)));
-  };
-  kids.forEach(add);
-  if (pendingValue !== undefined) el.value = pendingValue;
-  return el;
-}
-
-export function clear(el) { while (el.firstChild) el.removeChild(el.firstChild); return el; }
-export function mount(el, ...nodes) { clear(el); nodes.forEach((n) => n && el.appendChild(n)); return el; }
+export { h, clear, mount };
 
 /* ---------- Nhãn tiếng Việt cho mã nghiệp vụ (mã lưu trữ là tiếng Anh snake_case) ---------- */
 export const L = {
@@ -63,179 +45,50 @@ export function fmtDateTime(iso) {
 }
 export const todayYmd = () => new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 10);
 
-/* ---------- Thành phần ---------- */
-export function badge(text, kind) { return h('span', { class: 'badge ' + (kind || '') }, text); }
+/* ---------- Thành phần (ủy quyền sang js/components) ---------- */
+export function badge(text, kind) { return Badge({ label: text, tone: kind }); }
 export const statusBadge = (s) => badge(lbl(L.status, s), 'st-' + s);
 export const priorityBadge = (p) => badge(lbl(L.priority, p), 'pr-' + p);
 export const reviewBadge = (s) => badge(lbl(L.review, s), 'rv-' + s);
 
-export function kpi(label, value, opts = {}) {
-  const el = h('div', { class: 'kpi' + (opts.tone ? ' ' + opts.tone : '') + (opts.href ? ' link' : '') },
-    h('div', { class: 'kpi-v' }, value), h('div', { class: 'kpi-l' }, label), opts.hint && h('div', { class: 'kpi-h' }, opts.hint));
-  if (opts.href) { el.tabIndex = 0; el.setAttribute('role', 'link'); const go = () => { location.hash = opts.href; }; el.onclick = go; el.onkeydown = (e) => { if (e.key === 'Enter') go(); }; }
-  return el;
-}
+export function kpi(label, value, opts = {}) { return Kpi({ label, value, hint: opts.hint, tone: opts.tone, href: opts.href }); }
 
-export function spinner(text) { return h('div', { class: 'state', role: 'status', 'aria-live': 'polite' }, h('div', { class: 'spin' }), text || 'Đang tải…'); }
-
-export function emptyState(title, hint, action) {
-  return h('div', { class: 'state empty' }, h('div', { class: 'state-t' }, title), hint && h('div', { class: 'state-h' }, hint), action);
-}
-
-export function errorState(err, retry) {
-  const ref = /Mã tham chiếu: (\w+)/.exec(err.message || '');
-  return h('div', { class: 'state error', role: 'alert' },
-    h('div', { class: 'state-t' }, err.message || 'Đã xảy ra lỗi.'),
-    h('div', { class: 'state-h' }, 'Nếu sự cố tiếp diễn, hãy báo quản trị viên' + (ref ? ' kèm mã ' + ref[1] : '') + '.'),
-    retry && h('button', { class: 'btn', onclick: retry }, 'Thử lại'));
-}
+export function spinner(text) { return Spinner({ label: text }); }
+export function emptyState(title, hint, action) { return EmptyState({ title, hint, action }); }
+export function errorState(err, retry) { return ErrorState({ error: err, onRetry: retry }); }
 
 /** Tải dữ liệu rồi vẽ; có trạng thái đang tải và lỗi + nút thử lại (R14). */
-export async function load(root, loader, render) {
-  const run = async () => {
-    mount(root, spinner());
-    try { const data = await loader(); mount(root, render(data, run)); }
-    catch (e) { if (e.code === 'UNAUTHENTICATED') return; mount(root, errorState(e, run)); }
-  };
-  return run();
+export function load(root, loader, render) {
+  return AsyncView({ container: root, loader, render }).reload();
 }
 
 /**
- * Khu vực danh sách: mỗi lần gọi run() hiện trạng thái đang tải, rồi vẽ kết quả hoặc hiện lỗi kèm nút thử lại.
- * Lỗi UNAUTHENTICATED không hiện ở đây vì lớp api đã chuyển người dùng về màn đăng nhập.
+ * Khu vực danh sách: lần đầu hiện trạng thái đang tải; các lần sau giữ kết quả cũ (làm mờ) cho tới khi có kết quả mới.
+ * Chỉ kết quả của lần gọi mới nhất được vẽ. Trả về hàm tải lại.
  */
 export function listLoader(results, loader, render) {
-  let seq = 0;
-  const run = async () => {
-    const mine = ++seq;
-    // Đã có kết quả cũ: giữ nguyên và làm mờ (không dựng lại DOM, không nhảy bố cục); chưa có thì hiện spinner.
-    if (results.firstChild && !results.querySelector('.state')) results.classList.add('busy');
-    else mount(results, spinner());
-    try {
-      const data = await loader();
-      if (mine !== seq) return;                 // đã có yêu cầu mới hơn: bỏ kết quả cũ, tránh ghi đè sai thứ tự
-      results.classList.remove('busy');
-      mount(results, render(data, run));
-    } catch (e) {
-      if (mine !== seq) return;
-      results.classList.remove('busy');
-      if (e.code !== 'UNAUTHENTICATED') mount(results, errorState(e, run));
-    }
-  };
-  return run;
+  return AsyncView({ container: results, loader, render, keepPrevious: true }).reload;
 }
 
 export function pager(res, onPage) {
-  const pages = Math.max(1, Math.ceil(res.total / res.pageSize));
-  if (pages <= 1) return h('div', { class: 'pager' }, h('span', { class: 'muted' }, `${res.total} bản ghi`));
-  return h('div', { class: 'pager' },
-    h('button', { class: 'btn sm', disabled: res.page <= 1, onclick: () => onPage(res.page - 1) }, '‹ Trước'),
-    h('span', { class: 'muted' }, `Trang ${res.page}/${pages} · ${res.total} bản ghi`),
-    h('button', { class: 'btn sm', disabled: res.page >= pages, onclick: () => onPage(res.page + 1) }, 'Sau ›'));
+  return Pagination({ page: res.page, pageSize: res.pageSize, total: res.total, onPage });
 }
 
 /* ---------- Toast ---------- */
-export function toast(msg, kind) {
-  let box = document.getElementById('toasts');
-  if (!box) { box = h('div', { id: 'toasts', 'aria-live': 'polite' }); document.body.appendChild(box); }
-  const t = h('div', { class: 'toast ' + (kind || '') }, msg);
-  box.appendChild(t);
-  setTimeout(() => t.remove(), kind === 'error' ? 7000 : 3500);
-}
+export function toast(msg, kind) { return showToast(msg, { kind: kind || 'info' }); }
 
 /* ---------- Hộp thoại ---------- */
-export function dialog({ title, body, actions }) {
-  const dlg = h('dialog', { class: 'dlg', 'aria-label': title });
-  const close = () => { dlg.close(); dlg.remove(); };
-  dlg.appendChild(h('div', { class: 'dlg-h' }, h('h2', null, title), h('button', { class: 'icon', 'aria-label': 'Đóng', onclick: close }, '×')));
-  dlg.appendChild(h('div', { class: 'dlg-b' }, body));
-  if (actions && actions.length) dlg.appendChild(h('div', { class: 'dlg-f' }, actions));
-  dlg.addEventListener('cancel', (e) => { e.preventDefault(); close(); });
-  document.body.appendChild(dlg);
-  dlg.showModal();
-  return { el: dlg, close };
-}
+export function dialog({ title, body, actions }) { return Dialog({ title, body, actions }); }
 
 export function confirmDialog(title, message, okLabel, danger) {
-  return new Promise((resolve) => {
-    const d = dialog({
-      title, body: h('p', null, message),
-      actions: [h('button', { class: 'btn', onclick: () => { d.close(); resolve(false); } }, 'Hủy'),
-        h('button', { class: 'btn ' + (danger ? 'danger' : 'primary'), onclick: () => { d.close(); resolve(true); } }, okLabel || 'Đồng ý')]
-    });
-  });
+  return confirm({ title, message, okLabel, danger });
 }
 
 /**
  * Hộp thoại biểu mẫu. fields: [{name,label,type,required,options,value,hint,min,max,maxlength,showIf(values)}]
- * onSubmit(values) trả Promise; ném ApiError có details.field để hiện lỗi ngay dưới ô nhập.
+ * onSubmit(values, { requestId }) trả Promise; ném ApiError có details.field để hiện lỗi ngay dưới ô nhập.
+ * Một requestId cho cả biểu mẫu: gửi lại sau lỗi mạng không tạo bản ghi thứ hai.
  */
 export function formDialog({ title, fields, submitLabel, onSubmit, intro }) {
-  const wraps = {}, inputs = {}, errs = {};
-  // Một requestId cho cả biểu mẫu: gửi lại sau lỗi mạng không tạo bản ghi thứ hai.
-  const requestId = newRequestId();
-  const banner = h('div', { class: 'form-err', role: 'alert', hidden: true });
-  const form = h('form', { novalidate: true, class: 'form' });
-
-  const values = () => {
-    const v = {};
-    fields.forEach((f) => {
-      const el = inputs[f.name];
-      v[f.name] = f.type === 'checkbox' ? el.checked : el.value;
-    });
-    return v;
-  };
-  const refresh = () => {
-    const v = values();
-    fields.forEach((f) => { if (f.showIf) wraps[f.name].hidden = !f.showIf(v); });
-    fields.forEach((f) => { if (f.type === 'range') errs[f.name + '__out'].textContent = inputs[f.name].value + '%'; });
-  };
-
-  fields.forEach((f) => {
-    const id = 'f_' + f.name + '_' + Math.random().toString(36).slice(2, 7);
-    let input;
-    const common = { id, name: f.name, required: !!f.required && f.type !== 'checkbox', 'aria-describedby': id + '_e' };
-    if (f.type === 'textarea') input = h('textarea', { ...common, rows: 4, maxlength: f.maxlength, value: f.value || '' });
-    else if (f.type === 'select') {
-      input = h('select', { ...common, value: f.value || '' }, (f.options || []).map((o) => h('option', { value: o.value }, o.label)));
-    } else if (f.type === 'checkbox') input = h('input', { ...common, type: 'checkbox', checked: !!f.value });
-    else input = h('input', { ...common, type: f.type || 'text', readonly: f.readonly, min: f.min, max: f.max, maxlength: f.maxlength, step: f.step, inputmode: f.inputmode, value: f.value !== undefined ? f.value : '' });
-    input.addEventListener('input', refresh); input.addEventListener('change', refresh);
-    inputs[f.name] = input;
-    errs[f.name] = h('div', { class: 'field-err', id: id + '_e', hidden: true });
-    const out = f.type === 'range' ? (errs[f.name + '__out'] = h('output', { class: 'range-out' }, '')) : null;
-    wraps[f.name] = h('div', { class: 'field' + (f.type === 'checkbox' ? ' check' : '') },
-      f.type === 'checkbox' ? [input, h('label', { for: id }, f.label)]
-        : [h('label', { for: id }, f.label, f.required && h('span', { class: 'req', 'aria-hidden': 'true' }, ' *')), out, input],
-      f.hint && h('div', { class: 'hint' }, f.hint), errs[f.name]);
-    form.appendChild(wraps[f.name]);
-  });
-  refresh();
-
-  const submit = h('button', { class: 'btn primary', type: 'submit' }, submitLabel || 'Lưu');
-  const d = dialog({ title, body: [intro && h('p', { class: 'muted' }, intro), banner, form],
-    actions: [h('button', { class: 'btn', type: 'button', onclick: () => d.close() }, 'Hủy'), submit] });
-  submit.onclick = (e) => { e.preventDefault(); form.requestSubmit ? form.requestSubmit() : form.dispatchEvent(new Event('submit', { cancelable: true })); };
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    banner.hidden = true;
-    Object.values(errs).forEach((x) => { x.hidden = true; });
-    const v = values();
-    for (const f of fields) {
-      if (f.required && f.type !== 'checkbox' && !wraps[f.name].hidden && String(v[f.name]).trim() === '') {
-        errs[f.name].textContent = f.label + ' là bắt buộc.'; errs[f.name].hidden = false; inputs[f.name].focus(); return;
-      }
-    }
-    submit.disabled = true; submit.textContent = 'Đang lưu…';
-    try { await onSubmit(v, { requestId }); d.close(); }
-    catch (err) {
-      const fld = err.details && err.details.field;
-      if (fld && errs[fld]) { errs[fld].textContent = err.message; errs[fld].hidden = false; inputs[fld].focus(); }
-      else { banner.textContent = err.message || 'Không lưu được.'; banner.hidden = false; }
-      submit.disabled = false; submit.textContent = submitLabel || 'Lưu';
-    }
-  });
-  setTimeout(() => { const first = fields.find((f) => f.type !== 'range' && !wraps[f.name].hidden); if (first) inputs[first.name].focus(); }, 30);
-  return d;
+  return FormDialog({ title, fields, submitLabel, onSubmit, intro, requestId: newRequestId() });
 }

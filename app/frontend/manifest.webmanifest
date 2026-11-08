@@ -1,0 +1,17 @@
+{
+  "name": "QLCV CBTD – Quản lý công việc cán bộ tín dụng",
+  "short_name": "QLCV CBTD",
+  "description": "Giao việc, báo cáo tiến độ và duyệt tiến độ cho cán bộ tín dụng.",
+  "lang": "vi",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f4f6f5",
+  "theme_color": "#0f5c4a",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

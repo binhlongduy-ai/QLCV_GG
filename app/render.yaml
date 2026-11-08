@@ -18,3 +18,9 @@ services:
       - path: /*
         name: Referrer-Policy
         value: no-referrer
+      - path: /sw.js
+        name: Cache-Control
+        value: no-cache
+      - path: /manifest.webmanifest
+        name: Content-Type
+        value: application/manifest+json
