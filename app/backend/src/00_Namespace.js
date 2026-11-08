@@ -18,6 +18,7 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     MAX_BODY_BYTES: 64 * 1024,
     RATE_LIMIT_PER_MIN: 240,
     TOKEN_CACHE_SEC: 300,
+    USER_CACHE_SEC: 60,            // hồ sơ người dùng theo email; cập nhật qua API được ghi xuyên ngay, sửa trực tiếp trên Sheets có hiệu lực sau tối đa chừng này giây
     REF_CACHE_SEC: 60,             // bảng tham chiếu (vai trò/quyền) được giữ trong CacheService; sửa trực tiếp trên Sheets có hiệu lực sau tối đa chừng này giây
     BACKUP_RETENTION_DAYS: 30,
     LIMITS: { title: 200, description: 2000, narrative: 2000, comment: 1000, name: 200, phone: 20, org: 100 }
@@ -42,8 +43,10 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     Permissions: { cols: ['permission_id', 'code', 'name', 'description'], pk: 'permission_id', reference: true },
     RolePermissions: { cols: ['role_id', 'permission_id', 'created_at'], pk: null, reference: true },
     Users: {
-      cols: ['user_id', 'email', 'employee_code', 'full_name', 'role_id', 'org_unit', 'status', 'created_at', 'updated_at'],
-      pk: 'user_id', prefix: 'USR', immutable: ['user_id', 'email', 'created_at']
+      cols: ['user_id', 'email', 'employee_code', 'full_name', 'role_id', 'org_unit', 'status', 'created_at', 'updated_at',
+        'unread_notifications'],
+      pk: 'user_id', prefix: 'USR', immutable: ['user_id', 'email', 'created_at'],
+      derived: ['unread_notifications']   // tính từ Notifications (26_Derived.js), không có trong CSV/từ điển dữ liệu
     },
     Customers: {
       cols: ['customer_id', 'customer_code', 'name', 'type', 'phone', 'status', 'created_at', 'updated_at',
@@ -52,8 +55,10 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     },
     Tasks: {
       cols: ['task_id', 'task_code', 'customer_id', 'title', 'description', 'status', 'priority', 'due_at',
-        'created_by_user_id', 'completed_at', 'created_at', 'updated_at', 'archived_at'],
-      pk: 'task_id', prefix: 'TSK', immutable: ['task_id', 'task_code', 'created_by_user_id', 'created_at']
+        'created_by_user_id', 'completed_at', 'created_at', 'updated_at', 'archived_at',
+        'approved_progress', 'pending_updates'],
+      pk: 'task_id', prefix: 'TSK', immutable: ['task_id', 'task_code', 'created_by_user_id', 'created_at'],
+      derived: ['approved_progress', 'pending_updates']   // tính từ TaskUpdates (26_Derived.js)
     },
     TaskAssignees: {
       cols: ['assignment_id', 'task_id', 'user_id', 'assignee_email_snapshot', 'assignment_role', 'assigned_at', 'active'],
@@ -79,7 +84,7 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     }
   };
 
-  var INT_COLS = { 'TaskUpdates.progress_pct': 1 };
+  var INT_COLS = { 'TaskUpdates.progress_pct': 1, 'Tasks.approved_progress': 1, 'Tasks.pending_updates': 1, 'Users.unread_notifications': 1 };
   var BOOL_COLS = { 'TaskAssignees.active': 1 };
 
   function isoNoMs(d) { return d.toISOString().replace(/\.\d{3}Z$/, 'Z'); }
@@ -114,7 +119,9 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     extensions: [
       'Tasks.archived_at — lưu trữ thay vì xóa cứng (PER-03, R5)',
       'Customers.archived_at — xóa mềm (PER-08)',
-      'Customers.company_representative — Người đại diện công ty (R17)'
+      'Customers.company_representative — Người đại diện công ty (R17)',
+      'Tasks.approved_progress, Tasks.pending_updates — số liệu dẫn xuất từ TaskUpdates (tối ưu đọc, xem 26_Derived.js)',
+      'Users.unread_notifications — số thông báo chưa đọc, dẫn xuất từ Notifications (xem 26_Derived.js)'
     ],
     names: Object.keys(tables),
     cols: function (t) { return tables[t].cols; },

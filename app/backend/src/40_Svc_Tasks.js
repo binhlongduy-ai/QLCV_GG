@@ -104,7 +104,8 @@
     var task = Q.Repo.tasks.insert({
       task_id: id, task_code: D.Codes.taskCodeFor(id), customer_id: customer.customer_id,
       title: title, description: description, status: 'not_started', priority: priority, due_at: dueAt,
-      created_by_user_id: ctx.user.user_id, completed_at: '', created_at: now, updated_at: now, archived_at: ''
+      created_by_user_id: ctx.user.user_id, completed_at: '', created_at: now, updated_at: now, archived_at: '',
+      approved_progress: 0, pending_updates: 0
     });
     Q.Audit.log(ctx, 'task.create', 'Task', task.task_id, key);
     Q.Assignments.addAssignment(ctx, task, primary, 'primary');

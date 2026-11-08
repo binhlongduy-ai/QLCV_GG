@@ -20,6 +20,7 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     MAX_BODY_BYTES: 64 * 1024,
     RATE_LIMIT_PER_MIN: 240,
     TOKEN_CACHE_SEC: 300,
+    USER_CACHE_SEC: 60,            // hồ sơ người dùng theo email; cập nhật qua API được ghi xuyên ngay, sửa trực tiếp trên Sheets có hiệu lực sau tối đa chừng này giây
     REF_CACHE_SEC: 60,             // bảng tham chiếu (vai trò/quyền) được giữ trong CacheService; sửa trực tiếp trên Sheets có hiệu lực sau tối đa chừng này giây
     BACKUP_RETENTION_DAYS: 30,
     LIMITS: { title: 200, description: 2000, narrative: 2000, comment: 1000, name: 200, phone: 20, org: 100 }
@@ -44,8 +45,10 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     Permissions: { cols: ['permission_id', 'code', 'name', 'description'], pk: 'permission_id', reference: true },
     RolePermissions: { cols: ['role_id', 'permission_id', 'created_at'], pk: null, reference: true },
     Users: {
-      cols: ['user_id', 'email', 'employee_code', 'full_name', 'role_id', 'org_unit', 'status', 'created_at', 'updated_at'],
-      pk: 'user_id', prefix: 'USR', immutable: ['user_id', 'email', 'created_at']
+      cols: ['user_id', 'email', 'employee_code', 'full_name', 'role_id', 'org_unit', 'status', 'created_at', 'updated_at',
+        'unread_notifications'],
+      pk: 'user_id', prefix: 'USR', immutable: ['user_id', 'email', 'created_at'],
+      derived: ['unread_notifications']   // tính từ Notifications (26_Derived.js), không có trong CSV/từ điển dữ liệu
     },
     Customers: {
       cols: ['customer_id', 'customer_code', 'name', 'type', 'phone', 'status', 'created_at', 'updated_at',
@@ -54,8 +57,10 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     },
     Tasks: {
       cols: ['task_id', 'task_code', 'customer_id', 'title', 'description', 'status', 'priority', 'due_at',
-        'created_by_user_id', 'completed_at', 'created_at', 'updated_at', 'archived_at'],
-      pk: 'task_id', prefix: 'TSK', immutable: ['task_id', 'task_code', 'created_by_user_id', 'created_at']
+        'created_by_user_id', 'completed_at', 'created_at', 'updated_at', 'archived_at',
+        'approved_progress', 'pending_updates'],
+      pk: 'task_id', prefix: 'TSK', immutable: ['task_id', 'task_code', 'created_by_user_id', 'created_at'],
+      derived: ['approved_progress', 'pending_updates']   // tính từ TaskUpdates (26_Derived.js)
     },
     TaskAssignees: {
       cols: ['assignment_id', 'task_id', 'user_id', 'assignee_email_snapshot', 'assignment_role', 'assigned_at', 'active'],
@@ -81,7 +86,7 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     }
   };
 
-  var INT_COLS = { 'TaskUpdates.progress_pct': 1 };
+  var INT_COLS = { 'TaskUpdates.progress_pct': 1, 'Tasks.approved_progress': 1, 'Tasks.pending_updates': 1, 'Users.unread_notifications': 1 };
   var BOOL_COLS = { 'TaskAssignees.active': 1 };
 
   function isoNoMs(d) { return d.toISOString().replace(/\.\d{3}Z$/, 'Z'); }
@@ -116,7 +121,9 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     extensions: [
       'Tasks.archived_at — lưu trữ thay vì xóa cứng (PER-03, R5)',
       'Customers.archived_at — xóa mềm (PER-08)',
-      'Customers.company_representative — Người đại diện công ty (R17)'
+      'Customers.company_representative — Người đại diện công ty (R17)',
+      'Tasks.approved_progress, Tasks.pending_updates — số liệu dẫn xuất từ TaskUpdates (tối ưu đọc, xem 26_Derived.js)',
+      'Users.unread_notifications — số thông báo chưa đọc, dẫn xuất từ Notifications (xem 26_Derived.js)'
     ],
     names: Object.keys(tables),
     cols: function (t) { return tables[t].cols; },
@@ -708,13 +715,36 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
   'use strict';
   var U = Q.Util;
 
+  /**
+   * Bộ nhớ đệm hồ sơ người dùng theo email (P3): request trúng cache không phải đọc trọn tab Users để xác thực.
+   * Ghi xuyên: mọi thay đổi dòng Users qua API (user.update, số thông báo chưa đọc) gọi put() ngay,
+   * nên cache luôn khớp dữ liệu. Chỉ sửa trực tiếp trên Sheets mới có độ trễ tối đa USER_CACHE_SEC giây.
+   */
+  var UserCache = Q.UserCache = {};
+  function userKey(email) { return 'usr:' + Q.Env.sha256(String(email).toLowerCase()); }
+  UserCache.get = function (email) {
+    var hit = null;
+    try { hit = Q.Env.cacheGet(userKey(email)); } catch (e) { return null; }
+    if (!hit) return null;
+    try { return Object.freeze(JSON.parse(hit)); } catch (e) { return null; }
+  };
+  UserCache.put = function (user) {
+    if (!user || !user.email) return;
+    try { Q.Env.cachePut(userKey(user.email), JSON.stringify(user), Q.Config.USER_CACHE_SEC); } catch (e) { /* bộ nhớ đệm đầy: bỏ qua */ }
+  };
+  UserCache.clear = function (email) { try { Q.Env.cacheRemove(userKey(email)); } catch (e) { /* bỏ qua */ } };
+
   var Auth = Q.Auth = {};
   Auth.verifyToken = function (idToken) { return Q.GoogleAuth.verify(idToken); };
 
   /** Trả về dòng Users đang hoạt động ứng với token. */
   Auth.authenticate = function (idToken) {
     var id = Auth.verifyToken(idToken);
-    var user = Q.Repo.users.byEmail(id.email);
+    var user = UserCache.get(id.email);
+    if (!user) {
+      user = Q.Repo.users.byEmail(id.email);
+      if (user) UserCache.put(user);
+    }
     if (!user) U.fail('FORBIDDEN', 'Tài khoản ' + id.email + ' chưa được cấp quyền sử dụng hệ thống.');
     if (user.status !== 'active') U.fail('FORBIDDEN', 'Tài khoản đã bị vô hiệu hóa.');
     return user;
@@ -917,14 +947,10 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
   Presenters.tasks = function (ctx, tasks) {
     var today = U.today();
     return tasks.map(function (t) {
-      var p = null, c = null, k = Q.Repo.customers.find(t.customer_id), approved = 0, pending = 0;
+      var p = null, c = null, k = Q.Repo.customers.find(t.customer_id);
       Q.Repo.assignments.forTask(t.task_id).forEach(function (a) {
         if (!a.active) return;
         if (a.assignment_role === 'primary') p = a; else c = a;
-      });
-      Q.Repo.updates.forTask(t.task_id).forEach(function (u) {
-        if (u.review_status === 'approved') approved = Math.max(approved, u.progress_pct || 0);
-        if (u.review_status === 'pending') pending++;
       });
       return {
         taskId: t.task_id, taskCode: t.task_code, title: t.title, description: t.description,
@@ -936,7 +962,8 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
         collaborator: c ? userRef(c.user_id) : null,
         createdBy: userRef(t.created_by_user_id),
         createdAt: t.created_at, updatedAt: t.updated_at, completedAt: t.completed_at || null,
-        approvedProgress: approved, pendingUpdates: pending
+        // Số liệu dẫn xuất lưu trên Tasks (26_Derived.js): không phải đọc trọn TaskUpdates cho mỗi danh sách.
+        approvedProgress: t.approved_progress || 0, pendingUpdates: t.pending_updates || 0
       };
     });
   };
@@ -1004,11 +1031,13 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     send: function (recipientId, eventType, sourceId, message) {
       var key = 'evt-' + eventType + '-' + sourceId + '-' + recipientId;
       if (Q.Repo.notifications.byKey(key).length) return null;
-      return Q.Repo.notifications.insert({
+      var n = Q.Repo.notifications.insert({
         notification_id: Q.Repo.notifications.nextId(),
         recipient_user_id: recipientId, event_type: eventType, source_record_id: sourceId,
         request_or_event_key: key, message: String(message).slice(0, 300), created_at: U.isoNow(), read_at: ''
       });
+      Q.Derived.onNotificationCreated(recipientId);
+      return n;
     }
   };
 })(QLCV);
@@ -1065,6 +1094,88 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
 
     /** Gỡ phân công: đặt active = false, không xóa dòng (giữ lịch sử). */
     deactivate: function (a) { return Q.Repo.assignments.update(a.assignment_id, { active: false }); }
+  };
+})(QLCV);
+
+/* ---- 26_Derived.js ---- */
+/**
+ * Ứng dụng: duy trì số liệu dẫn xuất (tối ưu đọc, P1/P2 trong docs/REVIEW_TEAM.md).
+ *  - Tasks.approved_progress = tiến độ lớn nhất trong các báo cáo đã duyệt của công việc.
+ *  - Tasks.pending_updates   = số báo cáo đang chờ duyệt của công việc.
+ *  - Users.unread_notifications = số thông báo chưa đọc của người dùng.
+ * Nguồn sự thật vẫn là TaskUpdates và Notifications; các cột này chỉ là bản tóm tắt để màn hình danh sách,
+ * dashboard và auth.me không phải đọc trọn hai bảng lớn đó. Cập nhật tăng dần tại đúng chỗ đổi trạng thái;
+ * expected()/recomputeAll() tính lại từ nguồn để kiểm tra toàn vẹn và sửa lệch.
+ * Không đổi updated_at (số liệu dẫn xuất không phải thay đổi nghiệp vụ).
+ */
+(function (Q) {
+  'use strict';
+
+  var Derived = Q.Derived = {};
+
+  /** Một báo cáo tiến độ mới được gửi (luôn ở trạng thái pending). */
+  Derived.onSubmitted = function (taskId) {
+    var t = Q.Repo.tasks.find(taskId);
+    if (t) Q.Repo.tasks.update(taskId, { pending_updates: (t.pending_updates || 0) + 1 });
+  };
+
+  /** Một báo cáo chuyển từ pending sang approved/rejected (chỉ gọi ở lần chuyển đầu tiên, không gọi khi thử lại). */
+  Derived.onReviewed = function (taskId, status, pct) {
+    var t = Q.Repo.tasks.find(taskId);
+    if (!t) return;
+    var patch = { pending_updates: Math.max(0, (t.pending_updates || 0) - 1) };
+    if (status === 'approved') patch.approved_progress = Math.max(t.approved_progress || 0, pct || 0);
+    Q.Repo.tasks.update(taskId, patch);
+  };
+
+  /** Một thông báo chưa đọc được tạo cho người nhận. */
+  Derived.onNotificationCreated = function (userId) {
+    var u = Q.Repo.users.find(userId);
+    if (!u) return;
+    Q.UserCache.put(Q.Repo.users.update(userId, { unread_notifications: (u.unread_notifications || 0) + 1 }));
+  };
+
+  /** n thông báo vừa được đánh dấu đã đọc. Trả về số chưa đọc còn lại. */
+  Derived.onNotificationsRead = function (userId, n) {
+    var u = Q.Repo.users.find(userId);
+    if (!u) return 0;
+    var left = Math.max(0, (u.unread_notifications || 0) - n);
+    if (n > 0) Q.UserCache.put(Q.Repo.users.update(userId, { unread_notifications: left }));
+    return left;
+  };
+
+  /** Giá trị đúng tính lại từ bảng nguồn: { tasks: {task_id: {approved, pending}}, users: {user_id: unread} }. */
+  Derived.expected = function () {
+    var tasks = {}, users = {};
+    Q.Repo.updates.all().forEach(function (u) {
+      var c = tasks[u.task_id] = tasks[u.task_id] || { approved: 0, pending: 0 };
+      if (u.review_status === 'approved') c.approved = Math.max(c.approved, u.progress_pct || 0);
+      if (u.review_status === 'pending') c.pending++;
+    });
+    Q.Repo.notifications.all().forEach(function (n) {
+      if (!n.read_at) users[n.recipient_user_id] = (users[n.recipient_user_id] || 0) + 1;
+    });
+    return { tasks: tasks, users: users };
+  };
+
+  /** Ghi lại các giá trị lệch so với nguồn. Trả về số dòng đã sửa. */
+  Derived.recomputeAll = function () {
+    var exp = Derived.expected(), fixed = { tasks: 0, users: 0 };
+    Q.Repo.tasks.all().forEach(function (t) {
+      var c = exp.tasks[t.task_id] || { approved: 0, pending: 0 };
+      if (t.approved_progress !== c.approved || t.pending_updates !== c.pending) {
+        Q.Repo.tasks.update(t.task_id, { approved_progress: c.approved, pending_updates: c.pending });
+        fixed.tasks++;
+      }
+    });
+    Q.Repo.users.all().forEach(function (u) {
+      var want = exp.users[u.user_id] || 0;
+      if (u.unread_notifications !== want) {
+        Q.UserCache.put(Q.Repo.users.update(u.user_id, { unread_notifications: want }));
+        fixed.users++;
+      }
+    });
+    return fixed;
   };
 })(QLCV);
 
@@ -1175,7 +1286,8 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     var task = Q.Repo.tasks.insert({
       task_id: id, task_code: D.Codes.taskCodeFor(id), customer_id: customer.customer_id,
       title: title, description: description, status: 'not_started', priority: priority, due_at: dueAt,
-      created_by_user_id: ctx.user.user_id, completed_at: '', created_at: now, updated_at: now, archived_at: ''
+      created_by_user_id: ctx.user.user_id, completed_at: '', created_at: now, updated_at: now, archived_at: '',
+      approved_progress: 0, pending_updates: 0
     });
     Q.Audit.log(ctx, 'task.create', 'Task', task.task_id, key);
     Q.Assignments.addAssignment(ctx, task, primary, 'primary');
@@ -1305,6 +1417,7 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
       submitted_by_user_id: ctx.user.user_id, submitted_by_email_snapshot: ctx.user.email, submitted_at: U.isoNow(),
       review_status: 'pending', reviewed_by_user_id: '', reviewed_by_email_snapshot: '', reviewed_at: '', review_comment: ''
     });
+    Q.Derived.onSubmitted(task.task_id);
     Q.Audit.log(ctx, 'progress.submit', 'TaskUpdate', u.update_id, key);
     Q.Assignments.reviewersFor(ctx.user).forEach(function (r) {
       Q.Notify.send(r.user_id, 'progress_submitted', u.update_id,
@@ -1358,6 +1471,7 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
       review_status: want, reviewed_by_user_id: ctx.user.user_id, reviewed_by_email_snapshot: ctx.user.email,
       reviewed_at: U.isoNow(), review_comment: comment
     });
+    Q.Derived.onReviewed(done.task_id, want, done.progress_pct);
     ensureReviewEffects(ctx, done);
     return { update: Q.Presenters.updates([Q.Repo.updates.find(upd.update_id)])[0], task: Q.Presenters.tasks(ctx, [Q.Repo.tasks.find(upd.task_id)])[0], replayed: false };
   };
@@ -1554,7 +1668,7 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     var now = U.isoNow();
     var u = Q.Repo.users.insert({
       user_id: Q.Repo.users.nextId(), email: email, employee_code: code, full_name: name, role_id: role.role_id,
-      org_unit: org, status: 'active', created_at: now, updated_at: now
+      org_unit: org, status: 'active', created_at: now, updated_at: now, unread_notifications: 0
     });
     Q.Audit.log(ctx, 'user.create', 'User', u.user_id, key);
     return { user: Q.Presenters.user(u, roleMap()), replayed: false };
@@ -1581,6 +1695,7 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
 
     patch.updated_at = U.isoNow();
     var up = Q.Repo.users.update(u.user_id, patch);
+    Q.UserCache.put(up);   // ghi xuyên: đổi trạng thái/vai trò có hiệu lực ngay ở request kế tiếp
     Q.Audit.log(ctx, 'user.update', 'User', u.user_id, 'evt-user.update-' + meta.requestId);
     return { user: Q.Presenters.user(up, roleMap()) };
   };
@@ -1596,7 +1711,8 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
   'use strict';
   var U = Q.Util, P = Q.Policy, D = Q.Domain;
 
-  function unreadCount(ctx) { return Q.Repo.notifications.unreadFor(ctx.user.user_id).length; }
+  /** Số chưa đọc lấy từ dòng Users của người gọi (26_Derived.js), không đọc trọn Notifications. */
+  function unreadCount(ctx) { return ctx.user.unread_notifications || 0; }
 
   var Dash = Q.DashboardService = {};
 
@@ -1638,7 +1754,7 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     tasks.forEach(function (t) { visible[t.task_id] = true; });
     if (P.has(ctx, 'progress.review')) {
       // Số chờ duyệt đếm trên toàn bộ báo cáo đang chờ (giữ nguyên hành vi trước khi tái cấu trúc).
-      kpis.pendingReviews = Q.Repo.updates.pending().length;
+      kpis.pendingReviews = Q.Repo.tasks.all().reduce(function (s, t) { return s + (t.pending_updates || 0); }, 0);
     }
     if (!P.isScoped(ctx)) {
       var rows = {};
@@ -1693,7 +1809,8 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
   'use strict';
   var U = Q.Util, P = Q.Policy;
 
-  function unreadCount(ctx) { return Q.Repo.notifications.unreadFor(ctx.user.user_id).length; }
+  /** Số chưa đọc lấy từ dòng Users của người gọi (26_Derived.js), không đọc trọn Notifications. */
+  function unreadCount(ctx) { return ctx.user.unread_notifications || 0; }
 
   var N = Q.NotificationService = {};
 
@@ -1723,7 +1840,7 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
       // Chỉ chủ nhận mới đánh dấu được; id của người khác bị bỏ qua, không báo lỗi để không lộ sự tồn tại.
       if (r && r.recipient_user_id === ctx.user.user_id && !r.read_at) { Q.Repo.notifications.update(id, { read_at: now }); n++; }
     });
-    return { updated: n, unread: unreadCount(ctx) };
+    return { updated: n, unread: n ? Q.Derived.onNotificationsRead(ctx.user.user_id, n) : unreadCount(ctx) };
   };
 
   N.markAllRead = function (ctx) {
@@ -1732,6 +1849,7 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     Q.Repo.notifications.forRecipient(ctx.user.user_id).forEach(function (r) {
       if (!r.read_at) { Q.Repo.notifications.update(r.notification_id, { read_at: now }); n++; }
     });
+    Q.Derived.onNotificationsRead(ctx.user.user_id, n);
     return { updated: n, unread: 0 };
   };
 })(QLCV);
@@ -1827,6 +1945,17 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
         bad('TaskUpdates', u.update_id, 'Đã duyệt 100% nhưng công việc chưa hoàn thành (có thể sửa bằng admin.reconcile)');
       }
     });
+    // Số liệu dẫn xuất (26_Derived.js) phải khớp nguồn; lệch thì sửa bằng admin.reconcile.
+    var exp = Q.Derived.expected();
+    all('Tasks').forEach(function (t) {
+      var c = exp.tasks[t.task_id] || { approved: 0, pending: 0 };
+      if (t.approved_progress !== c.approved) bad('Tasks', t.task_id, 'approved_progress lệch: ' + t.approved_progress + ' (đúng: ' + c.approved + ')');
+      if (t.pending_updates !== c.pending) bad('Tasks', t.task_id, 'pending_updates lệch: ' + t.pending_updates + ' (đúng: ' + c.pending + ')');
+    });
+    all('Users').forEach(function (u) {
+      var want = exp.users[u.user_id] || 0;
+      if (u.unread_notifications !== want) bad('Users', u.user_id, 'unread_notifications lệch: ' + u.unread_notifications + ' (đúng: ' + want + ')');
+    });
     return { ok: issues.length === 0, issueCount: issues.length, issues: issues.slice(0, 200), checkedAt: U.isoNow() };
   };
 
@@ -1841,7 +1970,8 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
         fixed.push(u.update_id);
       }
     });
-    if (fixed.length) Q.Audit.log(ctx, 'admin.reconcile', 'System', 'reconcile', 'evt-reconcile-' + Q.Env.uuid());
+    var derived = Q.Derived.recomputeAll();
+    if (fixed.length || derived.tasks || derived.users) Q.Audit.log(ctx, 'admin.reconcile', 'System', 'reconcile', 'evt-reconcile-' + Q.Env.uuid());
     return { fixed: fixed };
   };
 })(QLCV);
@@ -2062,9 +2192,17 @@ function doGet(e) { return QLCV.doGet(e); }
       if (!sh) { sh = ss.insertSheet(t); report.push('Tạo tab ' + t); }
       var head = sh.getRange(1, 1, 1, cols.length).getValues()[0];
       var empty = head.every(function (v) { return v === ''; });
+      // Di trú bổ sung: tab cũ có đúng các cột đầu, chỉ thiếu cột mới ở cuối -> thêm tiêu đề cột thiếu (không đụng dữ liệu).
+      var n = 0;
+      while (n < cols.length && String(head[n]) !== '') n++;
+      var prefixOk = n > 0 && cols.slice(0, n).every(function (c, i) { return String(head[i]) === c; }) &&
+        head.slice(n).every(function (v) { return v === ''; });
       if (empty) {
         sh.getRange(1, 1, 1, cols.length).setValues([cols]).setFontWeight('bold').setBackground('#e8f0ec');
         sh.setFrozenRows(1);
+      } else if (prefixOk && n < cols.length) {
+        sh.getRange(1, n + 1, 1, cols.length - n).setValues([cols.slice(n)]).setFontWeight('bold').setBackground('#e8f0ec');
+        report.push('Thêm cột vào tab ' + t + ': ' + cols.slice(n).join(', '));
       } else {
         cols.forEach(function (c, i) { if (String(head[i]) !== c) throw new Error('Tab ' + t + ' sai cột ' + (i + 1) + ': cần "' + c + '", đang là "' + head[i] + '".'); });
       }
@@ -2095,9 +2233,11 @@ function doGet(e) { return QLCV.doGet(e); }
       if (!adminEmail) throw new Error('Đặt Script Property ADMIN_EMAIL trước khi bootstrap.');
       var now = U.isoNow();
       Q.Repo.users.insert({ user_id: 'USR-001', email: U.email(adminEmail), employee_code: 'ADMIN-001', full_name: 'Quản trị hệ thống',
-        role_id: 'ROL-ADMIN', org_unit: 'HOI-SO', status: 'active', created_at: now, updated_at: now });
+        role_id: 'ROL-ADMIN', org_unit: 'HOI-SO', status: 'active', created_at: now, updated_at: now, unread_notifications: 0 });
       report.push('Tạo Admin đầu tiên: ' + adminEmail);
     }
+    var fixed = Q.Derived.recomputeAll();   // điền số liệu dẫn xuất cho dữ liệu có sẵn (kể cả sau khi thêm cột)
+    if (fixed.tasks || fixed.users) report.push('Tính lại số liệu dẫn xuất: ' + fixed.tasks + ' công việc, ' + fixed.users + ' người dùng');
     console.log(report.join('\n') || 'Cơ sở dữ liệu đã sẵn sàng.');
     return report;
   };
@@ -2121,6 +2261,7 @@ function doGet(e) { return QLCV.doGet(e); }
         return r;
       }));
     });
+    Q.Derived.recomputeAll();   // dữ liệu mẫu (CSV) không có cột dẫn xuất: tính từ TaskUpdates và Notifications
     console.log('Đã nạp dữ liệu tổng hợp.');
   };
 
@@ -3107,9 +3248,11 @@ function benchPerformance(spreadsheetId) { return QLCV.Bench.run(spreadsheetId);
       Object.keys(R).forEach(function (t) { tables[t] = clone(R[t]); });
       Object.keys(D).forEach(function (t) { tables[t] = clone(D[t]); });
       Q.Store.reset();
+      Q.Derived.recomputeAll();   // dữ liệu mẫu không có cột dẫn xuất
+      Q.Store.reset();
     },
     dump: function () { return clone(tables); },
-    load: function (snapshot) { tables = clone(snapshot); Q.Store.reset(); },
+    load: function (snapshot) { tables = clone(snapshot); cache = {}; Q.Store.reset(); Q.Derived.recomputeAll(); Q.Store.reset(); },
     onFlush: function (fn) { flushHook = fn; },
     seedProps: function (o) { Object.keys(o).forEach(function (k) { props[k] = o[k]; }); }
   };

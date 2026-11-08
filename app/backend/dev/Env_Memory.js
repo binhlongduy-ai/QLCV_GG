@@ -47,9 +47,11 @@
       Object.keys(R).forEach(function (t) { tables[t] = clone(R[t]); });
       Object.keys(D).forEach(function (t) { tables[t] = clone(D[t]); });
       Q.Store.reset();
+      Q.Derived.recomputeAll();   // dữ liệu mẫu không có cột dẫn xuất
+      Q.Store.reset();
     },
     dump: function () { return clone(tables); },
-    load: function (snapshot) { tables = clone(snapshot); Q.Store.reset(); },
+    load: function (snapshot) { tables = clone(snapshot); cache = {}; Q.Store.reset(); Q.Derived.recomputeAll(); Q.Store.reset(); },
     onFlush: function (fn) { flushHook = fn; },
     seedProps: function (o) { Object.keys(o).forEach(function (k) { props[k] = o[k]; }); }
   };

@@ -7,7 +7,8 @@
   'use strict';
   var U = Q.Util, P = Q.Policy, D = Q.Domain;
 
-  function unreadCount(ctx) { return Q.Repo.notifications.unreadFor(ctx.user.user_id).length; }
+  /** Số chưa đọc lấy từ dòng Users của người gọi (26_Derived.js), không đọc trọn Notifications. */
+  function unreadCount(ctx) { return ctx.user.unread_notifications || 0; }
 
   var Dash = Q.DashboardService = {};
 
@@ -49,7 +50,7 @@
     tasks.forEach(function (t) { visible[t.task_id] = true; });
     if (P.has(ctx, 'progress.review')) {
       // Số chờ duyệt đếm trên toàn bộ báo cáo đang chờ (giữ nguyên hành vi trước khi tái cấu trúc).
-      kpis.pendingReviews = Q.Repo.updates.pending().length;
+      kpis.pendingReviews = Q.Repo.tasks.all().reduce(function (s, t) { return s + (t.pending_updates || 0); }, 0);
     }
     if (!P.isScoped(ctx)) {
       var rows = {};

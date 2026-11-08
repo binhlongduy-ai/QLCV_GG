@@ -5,7 +5,8 @@
   'use strict';
   var U = Q.Util, P = Q.Policy;
 
-  function unreadCount(ctx) { return Q.Repo.notifications.unreadFor(ctx.user.user_id).length; }
+  /** Số chưa đọc lấy từ dòng Users của người gọi (26_Derived.js), không đọc trọn Notifications. */
+  function unreadCount(ctx) { return ctx.user.unread_notifications || 0; }
 
   var N = Q.NotificationService = {};
 
@@ -35,7 +36,7 @@
       // Chỉ chủ nhận mới đánh dấu được; id của người khác bị bỏ qua, không báo lỗi để không lộ sự tồn tại.
       if (r && r.recipient_user_id === ctx.user.user_id && !r.read_at) { Q.Repo.notifications.update(id, { read_at: now }); n++; }
     });
-    return { updated: n, unread: unreadCount(ctx) };
+    return { updated: n, unread: n ? Q.Derived.onNotificationsRead(ctx.user.user_id, n) : unreadCount(ctx) };
   };
 
   N.markAllRead = function (ctx) {
@@ -44,6 +45,7 @@
     Q.Repo.notifications.forRecipient(ctx.user.user_id).forEach(function (r) {
       if (!r.read_at) { Q.Repo.notifications.update(r.notification_id, { read_at: now }); n++; }
     });
+    Q.Derived.onNotificationsRead(ctx.user.user_id, n);
     return { updated: n, unread: 0 };
   };
 })(QLCV);

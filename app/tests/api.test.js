@@ -316,7 +316,9 @@ test('Lược đồ khớp dữ liệu mẫu (CSV ↔ Q.Schema) và seed không 
   for (const t of Object.keys(D.reference)) assert.deepEqual(Object.keys(D.reference[t][0]), plain(Q.Schema.cols(t)), t);
   for (const t of Object.keys(D.demo)) {
     const have = Object.keys(D.demo[t][0]);
-    plain(Q.Schema.cols(t)).forEach((c) => assert.ok(have.includes(c), t + '.' + c));
+    const derived = plain(Q.Schema.tables[t].derived || []);   // cột dẫn xuất: tính khi nạp, cố ý không có trong CSV
+    plain(Q.Schema.cols(t)).filter((c) => !derived.includes(c)).forEach((c) => assert.ok(have.includes(c), t + '.' + c));
+    derived.forEach((c) => assert.ok(!have.includes(c), t + '.' + c + ' là cột dẫn xuất, không được nằm trong CSV'));
   }
   assert.equal(JSON.stringify(D).match(/loan|NhomNo|dư nợ/i), null);
 });

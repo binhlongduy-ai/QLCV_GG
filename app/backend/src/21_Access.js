@@ -9,13 +9,36 @@
   'use strict';
   var U = Q.Util;
 
+  /**
+   * Bộ nhớ đệm hồ sơ người dùng theo email (P3): request trúng cache không phải đọc trọn tab Users để xác thực.
+   * Ghi xuyên: mọi thay đổi dòng Users qua API (user.update, số thông báo chưa đọc) gọi put() ngay,
+   * nên cache luôn khớp dữ liệu. Chỉ sửa trực tiếp trên Sheets mới có độ trễ tối đa USER_CACHE_SEC giây.
+   */
+  var UserCache = Q.UserCache = {};
+  function userKey(email) { return 'usr:' + Q.Env.sha256(String(email).toLowerCase()); }
+  UserCache.get = function (email) {
+    var hit = null;
+    try { hit = Q.Env.cacheGet(userKey(email)); } catch (e) { return null; }
+    if (!hit) return null;
+    try { return Object.freeze(JSON.parse(hit)); } catch (e) { return null; }
+  };
+  UserCache.put = function (user) {
+    if (!user || !user.email) return;
+    try { Q.Env.cachePut(userKey(user.email), JSON.stringify(user), Q.Config.USER_CACHE_SEC); } catch (e) { /* bộ nhớ đệm đầy: bỏ qua */ }
+  };
+  UserCache.clear = function (email) { try { Q.Env.cacheRemove(userKey(email)); } catch (e) { /* bỏ qua */ } };
+
   var Auth = Q.Auth = {};
   Auth.verifyToken = function (idToken) { return Q.GoogleAuth.verify(idToken); };
 
   /** Trả về dòng Users đang hoạt động ứng với token. */
   Auth.authenticate = function (idToken) {
     var id = Auth.verifyToken(idToken);
-    var user = Q.Repo.users.byEmail(id.email);
+    var user = UserCache.get(id.email);
+    if (!user) {
+      user = Q.Repo.users.byEmail(id.email);
+      if (user) UserCache.put(user);
+    }
     if (!user) U.fail('FORBIDDEN', 'Tài khoản ' + id.email + ' chưa được cấp quyền sử dụng hệ thống.');
     if (user.status !== 'active') U.fail('FORBIDDEN', 'Tài khoản đã bị vô hiệu hóa.');
     return user;

@@ -30,6 +30,7 @@
       submitted_by_user_id: ctx.user.user_id, submitted_by_email_snapshot: ctx.user.email, submitted_at: U.isoNow(),
       review_status: 'pending', reviewed_by_user_id: '', reviewed_by_email_snapshot: '', reviewed_at: '', review_comment: ''
     });
+    Q.Derived.onSubmitted(task.task_id);
     Q.Audit.log(ctx, 'progress.submit', 'TaskUpdate', u.update_id, key);
     Q.Assignments.reviewersFor(ctx.user).forEach(function (r) {
       Q.Notify.send(r.user_id, 'progress_submitted', u.update_id,
@@ -83,6 +84,7 @@
       review_status: want, reviewed_by_user_id: ctx.user.user_id, reviewed_by_email_snapshot: ctx.user.email,
       reviewed_at: U.isoNow(), review_comment: comment
     });
+    Q.Derived.onReviewed(done.task_id, want, done.progress_pct);
     ensureReviewEffects(ctx, done);
     return { update: Q.Presenters.updates([Q.Repo.updates.find(upd.update_id)])[0], task: Q.Presenters.tasks(ctx, [Q.Repo.tasks.find(upd.task_id)])[0], replayed: false };
   };

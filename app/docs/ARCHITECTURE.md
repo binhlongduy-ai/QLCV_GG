@@ -41,9 +41,9 @@ Giao tiếp (80, 90)  ──►  Ứng dụng / use case (40–48)  ──►  M
 | Dùng chung | `00_Namespace`, `01_Util` | Config, enum, lược đồ 10 bảng; lỗi nghiệp vụ, kiểm tra đầu vào, ngày giờ | — |
 | Miền | `20_Domain` | Quy tắc thuần: trễ hạn, khóa sửa công việc, R6/R8/R10, chống tự khóa Admin, mã hiển thị | Dùng chung |
 | Adapter dữ liệu | `22_Repositories` | Điểm DUY NHẤT chạm `Q.Store`; truy vấn theo nghiệp vụ (`Repo.assignments.activeForTask`…) | Store |
-| Quyền | `21_Access` | Xác thực người dùng (`Q.Auth`), RBAC và phạm vi bản ghi (`Q.Policy`) | Repo, Google token |
+| Quyền | `21_Access` | Xác thực người dùng (`Q.Auth`), cache hồ sơ người dùng ghi xuyên (`Q.UserCache`), RBAC và phạm vi bản ghi (`Q.Policy`) | Repo, Google token |
 | Adapter ra ngoài | `23_Presenters` | Bản ghi → DTO camelCase (hợp đồng API giữ nguyên) | Repo, Domain |
-| Ứng dụng | `24_Activity`, `25_Assignments` | Nhật ký kiểm toán, thông báo (khử trùng lặp), phân công | Repo, Domain |
+| Ứng dụng | `24_Activity`, `25_Assignments`, `26_Derived` | Nhật ký kiểm toán, thông báo (khử trùng lặp), phân công; duy trì số liệu dẫn xuất (`Tasks.approved_progress/pending_updates`, `Users.unread_notifications`) | Repo, Domain |
 | Use case | `40–48_Svc_*` | Công việc, tiến độ, khách hàng, người dùng, dashboard, thông báo, nhật ký, toàn vẹn, bảo trì | Tất cả lớp trên |
 | Giao tiếp | `80_Pipeline` | Kiểm tra request, xác thực, giới hạn tần suất, khóa khi ghi, envelope `{ok, data|error, meta}` | Use case qua bảng action |
 | Composition root | `90_Router` | Bảng ACTIONS (nối tên action với use case), `doPost`/`doGet` | Mọi lớp |
@@ -69,6 +69,7 @@ app/
 │  │  ├─ 23_Presenters.js    DTO trả về giao diện
 │  │  ├─ 24_Activity.js      Nhật ký kiểm toán, thông báo
 │  │  ├─ 25_Assignments.js   Phân công, người nhận thông báo duyệt
+│  │  ├─ 26_Derived.js       Số liệu dẫn xuất (tối ưu đọc), tính lại và kiểm tra lệch
 │  │  ├─ 40_Svc_Tasks.js     Use case: công việc & phân công
 │  │  ├─ 41_Svc_Progress.js  Use case: tiến độ & duyệt
 │  │  ├─ 42_Svc_Customers.js Use case: khách hàng

@@ -61,6 +61,17 @@
         bad('TaskUpdates', u.update_id, 'Đã duyệt 100% nhưng công việc chưa hoàn thành (có thể sửa bằng admin.reconcile)');
       }
     });
+    // Số liệu dẫn xuất (26_Derived.js) phải khớp nguồn; lệch thì sửa bằng admin.reconcile.
+    var exp = Q.Derived.expected();
+    all('Tasks').forEach(function (t) {
+      var c = exp.tasks[t.task_id] || { approved: 0, pending: 0 };
+      if (t.approved_progress !== c.approved) bad('Tasks', t.task_id, 'approved_progress lệch: ' + t.approved_progress + ' (đúng: ' + c.approved + ')');
+      if (t.pending_updates !== c.pending) bad('Tasks', t.task_id, 'pending_updates lệch: ' + t.pending_updates + ' (đúng: ' + c.pending + ')');
+    });
+    all('Users').forEach(function (u) {
+      var want = exp.users[u.user_id] || 0;
+      if (u.unread_notifications !== want) bad('Users', u.user_id, 'unread_notifications lệch: ' + u.unread_notifications + ' (đúng: ' + want + ')');
+    });
     return { ok: issues.length === 0, issueCount: issues.length, issues: issues.slice(0, 200), checkedAt: U.isoNow() };
   };
 
@@ -75,7 +86,8 @@
         fixed.push(u.update_id);
       }
     });
-    if (fixed.length) Q.Audit.log(ctx, 'admin.reconcile', 'System', 'reconcile', 'evt-reconcile-' + Q.Env.uuid());
+    var derived = Q.Derived.recomputeAll();
+    if (fixed.length || derived.tasks || derived.users) Q.Audit.log(ctx, 'admin.reconcile', 'System', 'reconcile', 'evt-reconcile-' + Q.Env.uuid());
     return { fixed: fixed };
   };
 })(QLCV);

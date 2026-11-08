@@ -69,7 +69,7 @@
     var now = U.isoNow();
     var u = Q.Repo.users.insert({
       user_id: Q.Repo.users.nextId(), email: email, employee_code: code, full_name: name, role_id: role.role_id,
-      org_unit: org, status: 'active', created_at: now, updated_at: now
+      org_unit: org, status: 'active', created_at: now, updated_at: now, unread_notifications: 0
     });
     Q.Audit.log(ctx, 'user.create', 'User', u.user_id, key);
     return { user: Q.Presenters.user(u, roleMap()), replayed: false };
@@ -96,6 +96,7 @@
 
     patch.updated_at = U.isoNow();
     var up = Q.Repo.users.update(u.user_id, patch);
+    Q.UserCache.put(up);   // ghi xuyên: đổi trạng thái/vai trò có hiệu lực ngay ở request kế tiếp
     Q.Audit.log(ctx, 'user.update', 'User', u.user_id, 'evt-user.update-' + meta.requestId);
     return { user: Q.Presenters.user(up, roleMap()) };
   };

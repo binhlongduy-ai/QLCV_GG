@@ -30,11 +30,13 @@
     send: function (recipientId, eventType, sourceId, message) {
       var key = 'evt-' + eventType + '-' + sourceId + '-' + recipientId;
       if (Q.Repo.notifications.byKey(key).length) return null;
-      return Q.Repo.notifications.insert({
+      var n = Q.Repo.notifications.insert({
         notification_id: Q.Repo.notifications.nextId(),
         recipient_user_id: recipientId, event_type: eventType, source_record_id: sourceId,
         request_or_event_key: key, message: String(message).slice(0, 300), created_at: U.isoNow(), read_at: ''
       });
+      Q.Derived.onNotificationCreated(recipientId);
+      return n;
     }
   };
 })(QLCV);

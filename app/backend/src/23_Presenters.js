@@ -20,14 +20,10 @@
   Presenters.tasks = function (ctx, tasks) {
     var today = U.today();
     return tasks.map(function (t) {
-      var p = null, c = null, k = Q.Repo.customers.find(t.customer_id), approved = 0, pending = 0;
+      var p = null, c = null, k = Q.Repo.customers.find(t.customer_id);
       Q.Repo.assignments.forTask(t.task_id).forEach(function (a) {
         if (!a.active) return;
         if (a.assignment_role === 'primary') p = a; else c = a;
-      });
-      Q.Repo.updates.forTask(t.task_id).forEach(function (u) {
-        if (u.review_status === 'approved') approved = Math.max(approved, u.progress_pct || 0);
-        if (u.review_status === 'pending') pending++;
       });
       return {
         taskId: t.task_id, taskCode: t.task_code, title: t.title, description: t.description,
@@ -39,7 +35,8 @@
         collaborator: c ? userRef(c.user_id) : null,
         createdBy: userRef(t.created_by_user_id),
         createdAt: t.created_at, updatedAt: t.updated_at, completedAt: t.completed_at || null,
-        approvedProgress: approved, pendingUpdates: pending
+        // Số liệu dẫn xuất lưu trên Tasks (26_Derived.js): không phải đọc trọn TaskUpdates cho mỗi danh sách.
+        approvedProgress: t.approved_progress || 0, pendingUpdates: t.pending_updates || 0
       };
     });
   };
