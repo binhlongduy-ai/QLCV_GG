@@ -19,7 +19,8 @@ function statusBar(byStatus) {
 export async function dashboardView(app, root) {
   const isDirectorView = app.can('dashboard.view_director');
   await load(root, async () => {
-    const [d, dir] = await Promise.all([api.call('dashboard.get'), isDirectorView ? api.call('dashboard.director') : null]);
+    // Một request duy nhất (trước đây hai request, mỗi request xác thực và nạp lại dữ liệu).
+    const { dashboard: d, director: dir } = await api.call('dashboard.overview');
     return { d, dir };
   }, ({ d, dir }) => {
     const k = d.kpis, scoped = app.me.role.code === 'CBTD';

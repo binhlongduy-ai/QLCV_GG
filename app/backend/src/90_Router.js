@@ -16,6 +16,7 @@
 
     'dashboard.get': { fn: Q.DashboardService.get },
     'dashboard.director': { fn: Q.DashboardService.director },
+    'dashboard.overview': { fn: Q.DashboardService.overview },
 
     'task.list': { fn: Q.TaskService.list },
     'task.get': { fn: Q.TaskService.get },

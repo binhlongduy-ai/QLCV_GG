@@ -35,6 +35,7 @@ Thành công: `{ "ok": true, "data": ..., "meta": { ... } }`. Lỗi: `{ "ok": fa
 | auth.me | | đăng nhập | – (trả user, role, perms) |
 | dashboard.get | | dashboard.view | – |
 | dashboard.director | | dashboard.view_director | – |
+| dashboard.overview | | dashboard.view | – (trả `{ dashboard, director }`; `director` là `null` nếu không có quyền xem phần Giám đốc) |
 | task.list | | task.view | q, status, priority, customerId, mine, overdue, includeArchived, sortBy, page, pageSize |
 | task.get | | task.view | taskId |
 | task.create | ✓ | task.create | customerId, title, description, priority, dueAt (YYYY-MM-DD), primaryUserId, collaboratorUserId |

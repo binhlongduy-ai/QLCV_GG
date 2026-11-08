@@ -157,12 +157,14 @@ async function start() {
   renderShell();
   refreshBell();
   clearInterval(bellTimer);
-  bellTimer = setInterval(() => { if (!document.hidden) refreshBell(); }, 60000);
+  // Mỗi lần đếm thông báo là một request đầy đủ (xác thực + đọc bảng): thăm dò thưa hơn khi tab ẩn và làm mới ngay khi quay lại tab.
+  bellTimer = setInterval(() => { if (!document.hidden) refreshBell(); }, 120000);
   route();
 }
 
 auth.onSessionExpired(() => { me = null; shell = null; showLogin('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.'); });
 window.addEventListener('hashchange', route);
+document.addEventListener('visibilitychange', () => { if (!document.hidden && me) refreshBell(); });
 
 if (!CFG.DEMO_MODE && (!CFG.API_URL || !CFG.GOOGLE_CLIENT_ID)) {
   mount($app, h('div', { class: 'login' }, h('div', { class: 'login-card' }, h('div', { class: 'state error', role: 'alert' },

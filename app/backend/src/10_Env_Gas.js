@@ -21,6 +21,7 @@
     },
     cacheGet: function (k) { return CacheService.getScriptCache().get(k); },
     cachePut: function (k, v, sec) { CacheService.getScriptCache().put(k, v, Math.max(1, Math.min(21600, sec))); },
+    cacheRemove: function (k) { CacheService.getScriptCache().remove(k); },
     sha256: function (s) {
       var bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, s, Utilities.Charset.UTF_8);
       return bytes.map(function (b) { return ('0' + (b & 0xff).toString(16)).slice(-2); }).join('');

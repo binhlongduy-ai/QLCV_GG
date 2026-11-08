@@ -21,6 +21,7 @@
     lock: function (fn) { return fn(); },
     cacheGet: function (k) { var e = cache[k]; return e && e.exp > Date.now() ? e.v : null; },
     cachePut: function (k, v, sec) { cache[k] = { v: v, exp: Date.now() + sec * 1000 }; },
+    cacheRemove: function (k) { delete cache[k]; },
     sha256: function (s) { var h = 5381; for (var i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return 'h' + (h >>> 0).toString(16); },
     fetchJson: function () { return { status: 503, json: null }; },
     uuid: function () { return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) { var r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); }); },

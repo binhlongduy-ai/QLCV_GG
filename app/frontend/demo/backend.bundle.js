@@ -20,6 +20,7 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     MAX_BODY_BYTES: 64 * 1024,
     RATE_LIMIT_PER_MIN: 240,
     TOKEN_CACHE_SEC: 300,
+    REF_CACHE_SEC: 60,             // bảng tham chiếu (vai trò/quyền) được giữ trong CacheService; sửa trực tiếp trên Sheets có hiệu lực sau tối đa chừng này giây
     BACKUP_RETENTION_DAYS: 30,
     LIMITS: { title: 200, description: 2000, narrative: 2000, comment: 1000, name: 200, phone: 20, org: 100 }
   };
@@ -85,17 +86,28 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
 
   function isoNoMs(d) { return d.toISOString().replace(/\.\d{3}Z$/, 'Z'); }
 
-  function coerceVal(table, col, v) {
-    var key = table + '.' + col;
-    if (INT_COLS[key]) {
-      if (v === '' || v === null || v === undefined) return null;
-      var n = typeof v === 'number' ? v : parseInt(v, 10);
-      return isFinite(n) ? Math.round(n) : null;
-    }
-    if (BOOL_COLS[key]) return v === true || String(v).toUpperCase() === 'TRUE';
+  function toInt(v) {
+    if (v === '' || v === null || v === undefined) return null;
+    var n = typeof v === 'number' ? v : parseInt(v, 10);
+    return isFinite(n) ? Math.round(n) : null;
+  }
+  function toBool(v) { return v === true || String(v).toUpperCase() === 'TRUE'; }
+  function toText(v) {
+    if (typeof v === 'string') return v;                 // đường nhanh: phần lớn ô là chuỗi
     if (v === null || v === undefined) return '';
     if (Object.prototype.toString.call(v) === '[object Date]') return isoNoMs(v);
     return String(v);
+  }
+  /** Bộ chuyển đổi theo cột, chọn MỘT lần cho mỗi bảng (trước đây nối chuỗi "Bảng.cột" cho từng ô của từng dòng). */
+  var CONVERTERS = {};
+  function convertersOf(t) {
+    if (!CONVERTERS[t]) {
+      CONVERTERS[t] = tables[t].cols.map(function (c) {
+        var key = t + '.' + c;
+        return INT_COLS[key] ? toInt : BOOL_COLS[key] ? toBool : toText;
+      });
+    }
+    return CONVERTERS[t];
   }
 
   Q.Schema = {
@@ -109,8 +121,8 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     names: Object.keys(tables),
     cols: function (t) { return tables[t].cols; },
     normalize: function (t, obj) {
-      var out = {};
-      tables[t].cols.forEach(function (c) { out[c] = coerceVal(t, c, obj[c]); });
+      var cols = tables[t].cols, conv = convertersOf(t), out = {};
+      for (var i = 0; i < cols.length; i++) out[cols[i]] = conv[i](obj[cols[i]]);
       return out;
     },
     toArray: function (t, obj) {
@@ -441,6 +453,7 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     },
     cacheGet: function (k) { return CacheService.getScriptCache().get(k); },
     cachePut: function (k, v, sec) { CacheService.getScriptCache().put(k, v, Math.max(1, Math.min(21600, sec))); },
+    cacheRemove: function (k) { CacheService.getScriptCache().remove(k); },
     sha256: function (s) {
       var bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, s, Utilities.Charset.UTF_8);
       return bytes.map(function (b) { return ('0' + (b & 0xff).toString(16)).slice(-2); }).join('');
@@ -598,14 +611,32 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
       .map(function (s) { return s.trim().toLowerCase(); }).filter(Boolean);
   }
 
+  var REF_KEY = 'ref:v1';
+
+  /**
+   * Vai trò và quyền (3 tab tham chiếu) gói gọn thành một khóa trong CacheService: các request sau không phải đọc 3 tab.
+   * Hết hạn sau Q.Config.REF_CACHE_SEC giây; Policy.clearReference() xóa ngay (dùng sau khi nạp lại dữ liệu tham chiếu).
+   */
+  function loadReference() {
+    var hit = Q.Env.cacheGet(REF_KEY);
+    if (hit) { try { return JSON.parse(hit); } catch (e) { /* hỏng: đọc lại từ Sheets */ } }
+    var S = Q.Store, ref = { roles: {}, byRole: {} }, codeById = {};
+    S.all('Permissions').forEach(function (p) { codeById[p.permission_id] = p.code; });
+    S.all('Roles').forEach(function (r) { ref.roles[r.role_id] = { code: r.code, name: r.name }; });
+    S.all('RolePermissions').forEach(function (rp) {
+      var c = codeById[rp.permission_id];
+      if (c) (ref.byRole[rp.role_id] = ref.byRole[rp.role_id] || []).push(c);
+    });
+    try { Q.Env.cachePut(REF_KEY, JSON.stringify(ref), Q.Config.REF_CACHE_SEC); } catch (e) { /* bộ nhớ đệm đầy: bỏ qua */ }
+    return ref;
+  }
+  Policy.clearReference = function () { try { Q.Env.cacheRemove(REF_KEY); } catch (e) { /* bỏ qua */ } };
+
   Policy.build = function (user) {
-    var S = Q.Store, role = S.find('Roles', user.role_id);
+    var ref = loadReference(), role = ref.roles[user.role_id];
     if (!role) U.fail('FORBIDDEN', 'Vai trò của tài khoản không hợp lệ.');
     var perms = {};
-    S.findBy('RolePermissions', 'role_id', user.role_id).forEach(function (rp) {
-      var p = S.find('Permissions', rp.permission_id);
-      if (p) perms[p.code] = true;
-    });
+    (ref.byRole[user.role_id] || []).forEach(function (code) { perms[code] = true; });
     // Cơ chế xác định "Giám đốc" trong BGD (điểm còn mở của plan): danh sách DIRECTOR_EMAILS.
     var isDirector = role.code === 'BGD' && directorEmails().indexOf(user.email) >= 0;
     if (isDirector) { perms['task.transfer'] = true; perms['dashboard.view_director'] = true; }
@@ -837,21 +868,29 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     if (U.bool(p.mine)) { var mine = P.assignedTaskIds(ctx.user.user_id); tasks = tasks.filter(function (t) { return mine[t.task_id]; }); }
     if (p.assigneeUserId) { var theirs = P.assignedTaskIds(p.assigneeUserId); tasks = tasks.filter(function (t) { return theirs[t.task_id]; }); }
 
-    var dtos = Q.DTO.tasks(ctx, tasks);
+    // Lọc và sắp xếp trên dòng thô; DTO (tra phân công, tiến độ, khách hàng) chỉ dựng cho trang đang xem.
     if (p.q) {
       var q = U.norm(String(p.q).slice(0, 100));
-      dtos = dtos.filter(function (d) { return U.norm(d.title + ' ' + d.taskCode + ' ' + (d.customer ? d.customer.name : '')).indexOf(q) >= 0; });
+      tasks = tasks.filter(function (t) {
+        var c = S().find('Customers', t.customer_id);
+        return U.norm(t.title + ' ' + t.task_code + ' ' + (c ? c.name : '')).indexOf(q) >= 0;
+      });
     }
     var rank = { high: 0, normal: 1, low: 2 }, dir = p.dir === 'desc' ? 'desc' : 'asc';
     var keyFns = {
-      dueAt: function (d) { return d.dueAt + d.taskCode; },
-      createdAt: function (d) { return d.createdAt + d.taskCode; },
-      updatedAt: function (d) { return d.updatedAt + d.taskCode; },
-      priority: function (d) { return rank[d.priority] + d.dueAt; }
+      dueAt: function (t) { return t.due_at + t.task_code; },
+      createdAt: function (t) { return t.created_at + t.task_code; },
+      updatedAt: function (t) { return t.updated_at + t.task_code; },
+      priority: function (t) { return rank[t.priority] + t.due_at; }
     };
     var by = keyFns[p.sortBy] ? p.sortBy : 'dueAt';
     if (!p.sortBy) dir = 'asc';
-    return U.paginate(U.sortBy(dtos, keyFns[by], dir), p);
+    var m = dir === 'desc' ? -1 : 1;
+    var keyed = tasks.map(function (t) { return { t: t, k: keyFns[by](t) }; });   // khóa tính một lần/dòng
+    keyed.sort(function (x, y) { return x.k < y.k ? -m : x.k > y.k ? m : 0; });
+    var page = U.paginate(keyed.map(function (e) { return e.t; }), p);
+    page.items = Q.DTO.tasks(ctx, page.items);
+    return page;
   };
 
   T.get = function (ctx, p) {
@@ -1525,6 +1564,17 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     };
   };
 
+  /**
+   * Tổng quan trong MỘT request: số liệu chung, và phần của Giám đốc nếu người dùng có quyền.
+   * Thay cho hai lời gọi dashboard.get + dashboard.director (mỗi lời gọi phải xác thực và nạp lại dữ liệu).
+   */
+  D.overview = function (ctx) {
+    return {
+      dashboard: D.get(ctx),
+      director: P.has(ctx, 'dashboard.view_director') ? D.director(ctx) : null
+    };
+  };
+
   /* ---------- Thông báo ---------- */
   var N = Q.NotificationService = {};
 
@@ -1586,6 +1636,7 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
 
     'dashboard.get': { fn: Q.DashboardService.get },
     'dashboard.director': { fn: Q.DashboardService.director },
+    'dashboard.overview': { fn: Q.DashboardService.overview },
 
     'task.list': { fn: Q.TaskService.list },
     'task.get': { fn: Q.TaskService.get },
@@ -1754,6 +1805,7 @@ function doGet(e) { return QLCV.doGet(e); }
     ['Roles', 'Permissions', 'RolePermissions'].forEach(function (t) {
       if (Q.Store.count(t) === 0) insertAll(t, R[t]);
     });
+    Q.Policy.clearReference();   // vai trò/quyền vừa nạp: bỏ bản cache cũ
   };
 
   Setup.bootstrapDatabase = function () {
@@ -2623,6 +2675,72 @@ QLCV.SeedData = {
  }
 };
 
+/* ---- 97_Bench.js ---- */
+/**
+ * Đo hiệu năng trên Apps Script thật. CHỈ ĐỌC dữ liệu (không ghi vào Sheets). Chạy từ trình soạn thảo: benchPerformance().
+ * Kết quả (JSON) ghi vào Nhật ký thực thi và được trả về. Bật token demo chỉ trong phạm vi một lần chạy này
+ * (biến nằm trong bộ nhớ của lần thực thi, tự mất khi kết thúc) để gọi Q.handle đầy đủ: xác thực → throttle → chính sách → hàm nghiệp vụ.
+ */
+(function (Q) {
+  'use strict';
+  if (typeof SpreadsheetApp === 'undefined') { Q.Bench = {}; return; }
+
+  function stats(ms) {
+    var s = ms.slice().sort(function (a, b) { return a - b; });
+    var sum = ms.reduce(function (a, b) { return a + b; }, 0);
+    return { n: ms.length, min: s[0], median: s[Math.floor(s.length / 2)], max: s[s.length - 1], avg: Math.round(sum / ms.length) };
+  }
+  function time(fn, n) {
+    var ms = [];
+    for (var i = 0; i < n; i++) { var t0 = Date.now(); fn(i); ms.push(Date.now() - t0); }
+    return stats(ms);
+  }
+
+  Q.Bench = {
+    run: function () {
+      var U = Q.Util, out = { version: Q.Config.VERSION, at: U.isoNow(), tables: {}, requests: {} };
+      Q.Store.reset();
+      var admin = Q.Store.all('Users').filter(function (u) { return u.role_id === 'ROL-ADMIN' && u.status === 'active'; })[0];
+      if (!admin) throw new Error('Chưa có Admin hoạt động. Hãy chạy bootstrapDatabase().');
+
+      // 1) Chi phí đọc từng tab (mỗi lần Store.reset rồi đọc lại hoàn toàn từ Sheets).
+      Q.Schema.names.forEach(function (t) {
+        var rows = 0;
+        var st = time(function () { Q.Store.reset(); rows = Q.Store.all(t).length; }, 3);
+        out.tables[t] = { rows: rows, readMs: st.median };
+      });
+
+      // 2) Bộ nhớ đệm vai trò/quyền: lạnh (xóa cache) so với ấm.
+      var cold = time(function () { Q.Policy.clearReference(); Q.Store.reset(); Q.Policy.build(admin); }, 3);
+      Q.Policy.build(admin);
+      var warm = time(function () { Q.Store.reset(); Q.Policy.build(admin); }, 5);
+      out.referenceCache = { coldBuildMs: cold, warmBuildMs: warm };
+      var cc = time(function (i) { Q.Env.cachePut('bench:k', 'v' + i, 30); Q.Env.cacheGet('bench:k'); }, 5);
+      out.cacheServiceRoundTripMs = cc;
+      try { Q.Env.cacheRemove('bench:k'); } catch (e) { /* bỏ qua */ }
+
+      // 3) Request đầy đủ qua Q.handle (token demo chỉ trong lần chạy này).
+      var token = 'demo:' + admin.email, prev = Q.Env.allowDemoTokens;
+      Q.Env.allowDemoTokens = true;
+      try {
+        function req(action, params) { var r = Q.handle({ action: action, idToken: token, params: params || {} }); if (!r.ok) throw new Error(action + ': ' + r.error.code); return r; }
+        req('auth.me');   // làm nóng cache
+        out.requests['auth.me'] = time(function () { req('auth.me'); }, 5);
+        out.requests['task.list (20 dòng)'] = time(function () { req('task.list', { pageSize: 20 }); }, 5);
+        out.requests['dashboard.get + dashboard.director (2 request, cách cũ)'] = time(function () { req('dashboard.get'); req('dashboard.director'); }, 5);
+        out.requests['dashboard.overview (1 request, cách mới)'] = time(function () { req('dashboard.overview'); }, 5);
+        Q.Policy.clearReference();
+        out.requests['auth.me khi cache lạnh'] = time(function () { Q.Policy.clearReference(); req('auth.me'); }, 3);
+      } finally { Q.Env.allowDemoTokens = prev; }
+
+      console.log(JSON.stringify(out, null, 2));
+      return out;
+    }
+  };
+})(QLCV);
+
+function benchPerformance() { return QLCV.Bench.run(); }
+
 /* ---- Env_Memory.js ---- */
 /**
  * Môi trường bộ nhớ – dùng cho (1) kiểm thử Node, (2) chế độ demo trong trình duyệt.
@@ -2647,6 +2765,7 @@ QLCV.SeedData = {
     lock: function (fn) { return fn(); },
     cacheGet: function (k) { var e = cache[k]; return e && e.exp > Date.now() ? e.v : null; },
     cachePut: function (k, v, sec) { cache[k] = { v: v, exp: Date.now() + sec * 1000 }; },
+    cacheRemove: function (k) { delete cache[k]; },
     sha256: function (s) { var h = 5381; for (var i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return 'h' + (h >>> 0).toString(16); },
     fetchJson: function () { return { status: 503, json: null }; },
     uuid: function () { return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) { var r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); }); },

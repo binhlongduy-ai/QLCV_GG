@@ -108,3 +108,5 @@ input[type=checkbox]{width:auto} input[readonly]{background:#f0f3f2}
   .tbl.rwd td:not([data-label]):before{content:none}
 }
 @media print{.top,.demo-banner,.actions,.filters,#toasts{display:none!important}}
+
+.busy { opacity: .55; transition: opacity .15s; pointer-events: none; }

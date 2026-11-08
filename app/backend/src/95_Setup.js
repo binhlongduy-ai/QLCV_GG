@@ -44,6 +44,7 @@
     ['Roles', 'Permissions', 'RolePermissions'].forEach(function (t) {
       if (Q.Store.count(t) === 0) insertAll(t, R[t]);
     });
+    Q.Policy.clearReference();   // vai trò/quyền vừa nạp: bỏ bản cache cũ
   };
 
   Setup.bootstrapDatabase = function () {

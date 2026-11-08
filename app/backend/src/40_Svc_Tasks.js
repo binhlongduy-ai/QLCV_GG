@@ -25,21 +25,29 @@
     if (U.bool(p.mine)) { var mine = P.assignedTaskIds(ctx.user.user_id); tasks = tasks.filter(function (t) { return mine[t.task_id]; }); }
     if (p.assigneeUserId) { var theirs = P.assignedTaskIds(p.assigneeUserId); tasks = tasks.filter(function (t) { return theirs[t.task_id]; }); }
 
-    var dtos = Q.DTO.tasks(ctx, tasks);
+    // Lọc và sắp xếp trên dòng thô; DTO (tra phân công, tiến độ, khách hàng) chỉ dựng cho trang đang xem.
     if (p.q) {
       var q = U.norm(String(p.q).slice(0, 100));
-      dtos = dtos.filter(function (d) { return U.norm(d.title + ' ' + d.taskCode + ' ' + (d.customer ? d.customer.name : '')).indexOf(q) >= 0; });
+      tasks = tasks.filter(function (t) {
+        var c = S().find('Customers', t.customer_id);
+        return U.norm(t.title + ' ' + t.task_code + ' ' + (c ? c.name : '')).indexOf(q) >= 0;
+      });
     }
     var rank = { high: 0, normal: 1, low: 2 }, dir = p.dir === 'desc' ? 'desc' : 'asc';
     var keyFns = {
-      dueAt: function (d) { return d.dueAt + d.taskCode; },
-      createdAt: function (d) { return d.createdAt + d.taskCode; },
-      updatedAt: function (d) { return d.updatedAt + d.taskCode; },
-      priority: function (d) { return rank[d.priority] + d.dueAt; }
+      dueAt: function (t) { return t.due_at + t.task_code; },
+      createdAt: function (t) { return t.created_at + t.task_code; },
+      updatedAt: function (t) { return t.updated_at + t.task_code; },
+      priority: function (t) { return rank[t.priority] + t.due_at; }
     };
     var by = keyFns[p.sortBy] ? p.sortBy : 'dueAt';
     if (!p.sortBy) dir = 'asc';
-    return U.paginate(U.sortBy(dtos, keyFns[by], dir), p);
+    var m = dir === 'desc' ? -1 : 1;
+    var keyed = tasks.map(function (t) { return { t: t, k: keyFns[by](t) }; });   // khóa tính một lần/dòng
+    keyed.sort(function (x, y) { return x.k < y.k ? -m : x.k > y.k ? m : 0; });
+    var page = U.paginate(keyed.map(function (e) { return e.t; }), p);
+    page.items = Q.DTO.tasks(ctx, page.items);
+    return page;
   };
 
   T.get = function (ctx, p) {

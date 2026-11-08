@@ -56,9 +56,12 @@ export async function taskListView(app, root, _p, query, afterRender) {
 
 /* ---------- Tạo mới (mở hộp thoại trên nền danh sách) ---------- */
 export async function taskNewView(app, root, p, query) {
+  // Tải danh sách khách hàng và cán bộ song song với danh sách nền (trước đây chờ danh sách xong mới tải).
+  const lookups = Promise.all([api.call('customer.list', { pageSize: 100 }), api.call('user.options')]);
+  lookups.catch(() => {});
   await taskListView(app, root, p, query, async () => {
     try {
-      const [cust, users] = await Promise.all([api.call('customer.list', { pageSize: 100 }), api.call('user.options')]);
+      const [cust, users] = await lookups;
       const scoped = app.me.role.code === 'CBTD';
       if (!cust.items.length) { toast('Chưa có khách hàng nào để gắn công việc. Hãy nhờ KSV tạo khách hàng trước.', 'error'); app.go('#/tasks'); return; }
       const d = formDialog({

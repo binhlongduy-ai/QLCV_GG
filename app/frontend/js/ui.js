@@ -105,10 +105,22 @@ export async function load(root, loader, render) {
  * Lỗi UNAUTHENTICATED không hiện ở đây vì lớp api đã chuyển người dùng về màn đăng nhập.
  */
 export function listLoader(results, loader, render) {
+  let seq = 0;
   const run = async () => {
-    mount(results, spinner());
-    try { mount(results, render(await loader(), run)); }
-    catch (e) { if (e.code !== 'UNAUTHENTICATED') mount(results, errorState(e, run)); }
+    const mine = ++seq;
+    // Đã có kết quả cũ: giữ nguyên và làm mờ (không dựng lại DOM, không nhảy bố cục); chưa có thì hiện spinner.
+    if (results.firstChild && !results.querySelector('.state')) results.classList.add('busy');
+    else mount(results, spinner());
+    try {
+      const data = await loader();
+      if (mine !== seq) return;                 // đã có yêu cầu mới hơn: bỏ kết quả cũ, tránh ghi đè sai thứ tự
+      results.classList.remove('busy');
+      mount(results, render(data, run));
+    } catch (e) {
+      if (mine !== seq) return;
+      results.classList.remove('busy');
+      if (e.code !== 'UNAUTHENTICATED') mount(results, errorState(e, run));
+    }
   };
   return run;
 }

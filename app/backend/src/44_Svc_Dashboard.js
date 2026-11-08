@@ -85,6 +85,17 @@
     };
   };
 
+  /**
+   * Tổng quan trong MỘT request: số liệu chung, và phần của Giám đốc nếu người dùng có quyền.
+   * Thay cho hai lời gọi dashboard.get + dashboard.director (mỗi lời gọi phải xác thực và nạp lại dữ liệu).
+   */
+  D.overview = function (ctx) {
+    return {
+      dashboard: D.get(ctx),
+      director: P.has(ctx, 'dashboard.view_director') ? D.director(ctx) : null
+    };
+  };
+
   /* ---------- Thông báo ---------- */
   var N = Q.NotificationService = {};
 

@@ -18,6 +18,7 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     MAX_BODY_BYTES: 64 * 1024,
     RATE_LIMIT_PER_MIN: 240,
     TOKEN_CACHE_SEC: 300,
+    REF_CACHE_SEC: 60,             // bảng tham chiếu (vai trò/quyền) được giữ trong CacheService; sửa trực tiếp trên Sheets có hiệu lực sau tối đa chừng này giây
     BACKUP_RETENTION_DAYS: 30,
     LIMITS: { title: 200, description: 2000, narrative: 2000, comment: 1000, name: 200, phone: 20, org: 100 }
   };
@@ -83,17 +84,28 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
 
   function isoNoMs(d) { return d.toISOString().replace(/\.\d{3}Z$/, 'Z'); }
 
-  function coerceVal(table, col, v) {
-    var key = table + '.' + col;
-    if (INT_COLS[key]) {
-      if (v === '' || v === null || v === undefined) return null;
-      var n = typeof v === 'number' ? v : parseInt(v, 10);
-      return isFinite(n) ? Math.round(n) : null;
-    }
-    if (BOOL_COLS[key]) return v === true || String(v).toUpperCase() === 'TRUE';
+  function toInt(v) {
+    if (v === '' || v === null || v === undefined) return null;
+    var n = typeof v === 'number' ? v : parseInt(v, 10);
+    return isFinite(n) ? Math.round(n) : null;
+  }
+  function toBool(v) { return v === true || String(v).toUpperCase() === 'TRUE'; }
+  function toText(v) {
+    if (typeof v === 'string') return v;                 // đường nhanh: phần lớn ô là chuỗi
     if (v === null || v === undefined) return '';
     if (Object.prototype.toString.call(v) === '[object Date]') return isoNoMs(v);
     return String(v);
+  }
+  /** Bộ chuyển đổi theo cột, chọn MỘT lần cho mỗi bảng (trước đây nối chuỗi "Bảng.cột" cho từng ô của từng dòng). */
+  var CONVERTERS = {};
+  function convertersOf(t) {
+    if (!CONVERTERS[t]) {
+      CONVERTERS[t] = tables[t].cols.map(function (c) {
+        var key = t + '.' + c;
+        return INT_COLS[key] ? toInt : BOOL_COLS[key] ? toBool : toText;
+      });
+    }
+    return CONVERTERS[t];
   }
 
   Q.Schema = {
@@ -107,8 +119,8 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     names: Object.keys(tables),
     cols: function (t) { return tables[t].cols; },
     normalize: function (t, obj) {
-      var out = {};
-      tables[t].cols.forEach(function (c) { out[c] = coerceVal(t, c, obj[c]); });
+      var cols = tables[t].cols, conv = convertersOf(t), out = {};
+      for (var i = 0; i < cols.length; i++) out[cols[i]] = conv[i](obj[cols[i]]);
       return out;
     },
     toArray: function (t, obj) {

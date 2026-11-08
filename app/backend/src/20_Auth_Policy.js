@@ -54,14 +54,32 @@
       .map(function (s) { return s.trim().toLowerCase(); }).filter(Boolean);
   }
 
+  var REF_KEY = 'ref:v1';
+
+  /**
+   * Vai trò và quyền (3 tab tham chiếu) gói gọn thành một khóa trong CacheService: các request sau không phải đọc 3 tab.
+   * Hết hạn sau Q.Config.REF_CACHE_SEC giây; Policy.clearReference() xóa ngay (dùng sau khi nạp lại dữ liệu tham chiếu).
+   */
+  function loadReference() {
+    var hit = Q.Env.cacheGet(REF_KEY);
+    if (hit) { try { return JSON.parse(hit); } catch (e) { /* hỏng: đọc lại từ Sheets */ } }
+    var S = Q.Store, ref = { roles: {}, byRole: {} }, codeById = {};
+    S.all('Permissions').forEach(function (p) { codeById[p.permission_id] = p.code; });
+    S.all('Roles').forEach(function (r) { ref.roles[r.role_id] = { code: r.code, name: r.name }; });
+    S.all('RolePermissions').forEach(function (rp) {
+      var c = codeById[rp.permission_id];
+      if (c) (ref.byRole[rp.role_id] = ref.byRole[rp.role_id] || []).push(c);
+    });
+    try { Q.Env.cachePut(REF_KEY, JSON.stringify(ref), Q.Config.REF_CACHE_SEC); } catch (e) { /* bộ nhớ đệm đầy: bỏ qua */ }
+    return ref;
+  }
+  Policy.clearReference = function () { try { Q.Env.cacheRemove(REF_KEY); } catch (e) { /* bỏ qua */ } };
+
   Policy.build = function (user) {
-    var S = Q.Store, role = S.find('Roles', user.role_id);
+    var ref = loadReference(), role = ref.roles[user.role_id];
     if (!role) U.fail('FORBIDDEN', 'Vai trò của tài khoản không hợp lệ.');
     var perms = {};
-    S.findBy('RolePermissions', 'role_id', user.role_id).forEach(function (rp) {
-      var p = S.find('Permissions', rp.permission_id);
-      if (p) perms[p.code] = true;
-    });
+    (ref.byRole[user.role_id] || []).forEach(function (code) { perms[code] = true; });
     // Cơ chế xác định "Giám đốc" trong BGD (điểm còn mở của plan): danh sách DIRECTOR_EMAILS.
     var isDirector = role.code === 'BGD' && directorEmails().indexOf(user.email) >= 0;
     if (isDirector) { perms['task.transfer'] = true; perms['dashboard.view_director'] = true; }

@@ -32,3 +32,32 @@ test('một yêu cầu đọc chỉ đọc mỗi bảng tối đa một lần t�
     Q.MemoryDriver.read = original;
   }
 });
+
+test('dashboard.overview gộp dashboard.get và dashboard.director trong một request', () => {
+  const dash = ok(call(ADMIN, 'dashboard.get'));
+  const dir = ok(call(ADMIN, 'dashboard.director'));
+  const ov = ok(call(ADMIN, 'dashboard.overview'));
+  assert.deepEqual(JSON.parse(JSON.stringify(ov.dashboard)), JSON.parse(JSON.stringify(dash)));
+  assert.deepEqual(JSON.parse(JSON.stringify(ov.director)), JSON.parse(JSON.stringify(dir)));
+  assert.equal(ok(call(CBTD, 'dashboard.overview')).director, null, 'CBTD không có phần Giám đốc');
+});
+
+test('vai trò/quyền được cache: request sau không đọc lại Roles, Permissions, RolePermissions', () => {
+  ok(call(CBTD, 'auth.me'));   // làm nóng cache
+  const original = Q.MemoryDriver.read, seen = {};
+  Q.MemoryDriver.read = (t) => { seen[t] = (seen[t] || 0) + 1; return original(t); };
+  try {
+    const me = ok(call(CBTD, 'auth.me'));
+    assert.ok(me.permissions.includes('task.view'));
+    ['Roles', 'Permissions', 'RolePermissions'].forEach((t) => assert.equal(seen[t], undefined, t + ' không được đọc lại'));
+  } finally { Q.MemoryDriver.read = original; }
+});
+
+test('Policy.clearReference làm cache vai trò/quyền đọc lại từ dữ liệu', () => {
+  ok(call(CBTD, 'auth.me'));
+  Q.Dev.dump(); // dữ liệu không đổi
+  Q.Policy.clearReference();
+  const original = Q.MemoryDriver.read, seen = {};
+  Q.MemoryDriver.read = (t) => { seen[t] = (seen[t] || 0) + 1; return original(t); };
+  try { ok(call(CBTD, 'auth.me')); assert.equal(seen.Roles, 1); } finally { Q.MemoryDriver.read = original; }
+});
