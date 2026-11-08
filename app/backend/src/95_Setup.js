@@ -1,5 +1,6 @@
 /**
  * Khởi tạo & vận hành trên Google Sheets (chạy từ trình soạn thảo Apps Script hoặc menu "QLCV").
+ * Đây là công cụ quản trị một lần/định kỳ, không phải đường xử lý request; ghi dữ liệu qua Q.Repo.
  *  1) Đặt Script Properties:  SPREADSHEET_ID (nếu script không gắn sổ), GOOGLE_CLIENT_ID, ADMIN_EMAIL,
  *     tùy chọn ALLOWED_DOMAIN, DIRECTOR_EMAILS, BACKUP_FOLDER_ID.
  *  2) Chạy bootstrapDatabase()  -> tạo 10 tab, nạp Roles/Permissions/RolePermissions, tạo Admin đầu tiên.
@@ -10,12 +11,13 @@
 (function (Q) {
   'use strict';
   var U = Q.Util;
-  if (typeof SpreadsheetApp === 'undefined') { Q.Setup = {}; Q.Backup = {}; return; }
+  if (typeof SpreadsheetApp === 'undefined') { Q.Setup = {}; return; }
 
   var Setup = Q.Setup = {};
 
   function book() { return Q.SheetDriver.book(); }
 
+  /** Tạo đủ các tab theo lược đồ; kiểm tra tiêu đề cột của tab đã có (sai thì dừng, không ghi đè). */
   Setup.ensureTabs = function () {
     var ss = book(), report = [];
     Q.Schema.names.forEach(function (t) {
@@ -37,14 +39,13 @@
     return report;
   };
 
-  function insertAll(table, rows) { Q.Store.insertMany(table, rows); }
-
+  /** Nạp bảng tham chiếu (vai trò, quyền) khi bảng còn trống, rồi xóa bộ nhớ đệm vai trò/quyền. */
   Setup.loadReference = function () {
     var R = Q.SeedData.reference;
     ['Roles', 'Permissions', 'RolePermissions'].forEach(function (t) {
-      if (Q.Store.count(t) === 0) insertAll(t, R[t]);
+      if (Q.Repo.of(t).count() === 0) Q.Repo.of(t).insertMany(R[t]);
     });
-    Q.Policy.clearReference();   // vai trò/quyền vừa nạp: bỏ bản cache cũ
+    Q.Policy.clearReference();
   };
 
   Setup.bootstrapDatabase = function () {
@@ -53,10 +54,10 @@
     Q.Store.reset();
     Setup.loadReference();
     var adminEmail = (Q.Env.prop('ADMIN_EMAIL') || '').trim().toLowerCase();
-    if (Q.Store.count('Users') === 0) {
+    if (Q.Repo.users.count() === 0) {
       if (!adminEmail) throw new Error('Đặt Script Property ADMIN_EMAIL trước khi bootstrap.');
       var now = U.isoNow();
-      Q.Store.insert('Users', { user_id: 'USR-001', email: U.email(adminEmail), employee_code: 'ADMIN-001', full_name: 'Quản trị hệ thống',
+      Q.Repo.users.insert({ user_id: 'USR-001', email: U.email(adminEmail), employee_code: 'ADMIN-001', full_name: 'Quản trị hệ thống',
         role_id: 'ROL-ADMIN', org_unit: 'HOI-SO', status: 'active', created_at: now, updated_at: now });
       report.push('Tạo Admin đầu tiên: ' + adminEmail);
     }
@@ -71,13 +72,13 @@
     Setup.ensureTabs();
     Q.Store.reset();
     ['Users', 'Customers', 'Tasks', 'TaskAssignees', 'TaskUpdates', 'Notifications', 'AuditLogs'].forEach(function (t) {
-      if (Q.Store.count(t) > 0) throw new Error('Từ chối: tab ' + t + ' đã có dữ liệu.');
+      if (Q.Repo.of(t).count() > 0) throw new Error('Từ chối: tab ' + t + ' đã có dữ liệu.');
     });
     Setup.loadReference();
     var adminEmail = (Q.Env.prop('ADMIN_EMAIL') || '').trim().toLowerCase();
     var D = Q.SeedData.demo;
     Object.keys(D).forEach(function (t) {
-      insertAll(t, D[t].map(function (r) {
+      Q.Repo.of(t).insertMany(D[t].map(function (r) {
         // Cho phép đăng nhập thử bằng tài khoản Admin thật của người cài đặt.
         if (t === 'Users' && r.user_id === 'USR-001' && adminEmail) { r = Object.assign({}, r, { email: adminEmail }); }
         return r;
@@ -86,14 +87,16 @@
     console.log('Đã nạp dữ liệu tổng hợp.');
   };
 
+  /** Chạy kiểm tra toàn vẹn dưới quyền Admin đầu tiên (dùng từ trình soạn thảo). */
   Setup.checkIntegrity = function () {
     Q.Store.reset();
-    var admin = Q.Store.all('Users').filter(function (u) { return u.role_id === 'ROL-ADMIN'; })[0];
-    var res = Q.AdminService.integrity({ perms: { 'user.manage': true }, user: admin });
+    var admin = Q.Repo.users.byRole(Q.Repo.roles.idByCode('Admin'))[0];
+    var res = Q.IntegrityService.check({ perms: { 'user.manage': true }, user: admin });
     console.log(JSON.stringify(res, null, 2));
     return res;
   };
 
+  /** Chỉ chủ sở hữu được sửa trực tiếp các tab (R4). */
   Setup.protectSheets = function () {
     var me = Session.getEffectiveUser();
     Q.Schema.names.forEach(function (t) {
@@ -115,30 +118,6 @@
       backupFolder: Q.Env.prop('BACKUP_FOLDER_ID') || '(thư mục gốc Drive)', allowSeed: Q.Env.prop('ALLOW_SEED') === 'true', version: Q.Config.VERSION };
     console.log(JSON.stringify(out, null, 2));
     return out;
-  };
-
-  /* ---------- Sao lưu ---------- */
-  Q.Backup = {
-    run: function (kind) {
-      var stamp = Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'yyyyMMdd_HHmm');
-      var file = DriveApp.getFileById(book().getId());
-      var folderId = Q.Env.prop('BACKUP_FOLDER_ID');
-      var name = 'QLCV_backup_' + kind + '_' + stamp;
-      var copy = folderId ? file.makeCopy(name, DriveApp.getFolderById(folderId)) : file.makeCopy(name);
-      var removed = Q.Backup.prune(folderId);
-      return { enabled: true, fileId: copy.getId(), name: name, pruned: removed };
-    },
-    /** Đưa vào thùng rác bản sao lưu cũ hơn BACKUP_RETENTION_DAYS (chỉ trong thư mục sao lưu, theo tiền tố tên). */
-    prune: function (folderId) {
-      if (!folderId) return 0;
-      var cutoff = Date.now() - Q.Config.BACKUP_RETENTION_DAYS * 86400000, n = 0;
-      var it = DriveApp.getFolderById(folderId).getFiles();
-      while (it.hasNext()) {
-        var f = it.next();
-        if (f.getName().indexOf('QLCV_backup_') === 0 && f.getDateCreated().getTime() < cutoff) { f.setTrashed(true); n++; }
-      }
-      return n;
-    }
   };
 })(QLCV);
 

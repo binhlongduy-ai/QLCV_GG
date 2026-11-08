@@ -554,20 +554,21 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
   if (Q.Env && Q.Env.runtime === 'gas') Q.Store = Q.makeStore(Q.SheetDriver);
 })(QLCV);
 
-/* ---- 20_Auth_Policy.js ---- */
+/* ---- 12_Google_Auth.js ---- */
 /**
- * Xác thực (R1) và phân quyền cấp dữ liệu (R3).
- * - Danh tính: Google ID token, kiểm tra aud/iss/exp/email_verified (+ hd nếu cấu hình) rồi ánh xạ sang dòng Users đang hoạt động.
- * - Quyền: tra từ tab RolePermissions (dữ liệu, không ghi cứng) + phạm vi bản ghi cho CBTD.
- * Ẩn nút trên giao diện KHÔNG phải là phân quyền; mọi action đều kiểm tra lại ở đây.
+ * Hạ tầng xác minh Google ID token (R1). Chỉ làm việc với mã đăng nhập:
+ * kiểm tra aud/iss/email_verified/exp (+ hd nếu cấu hình) và trả về email đã chuẩn hóa.
+ * Không biết gì về người dùng hay phân quyền – việc đó thuộc 21_Access.js.
+ * Bộ nhớ đệm token (≤ TOKEN_CACHE_SEC giây) được giữ theo băm SHA-256 của token, không lưu token thô.
  */
 (function (Q) {
   'use strict';
   var U = Q.Util;
 
-  var Auth = Q.Auth = {};
+  var GoogleAuth = Q.GoogleAuth = {};
 
-  Auth.verifyToken = function (idToken) {
+  /** Trả về { email } đã xác minh, hoặc ném UNAUTHENTICATED / FORBIDDEN. */
+  GoogleAuth.verify = function (idToken) {
     var Env = Q.Env;
     if (typeof idToken !== 'string' || !idToken || idToken.length > 4096) {
       U.fail('UNAUTHENTICATED', 'Chưa đăng nhập hoặc phiên đăng nhập không hợp lệ.');
@@ -594,11 +595,126 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     Env.cachePut(ck, JSON.stringify(out), Math.min(Q.Config.TOKEN_CACHE_SEC, Number(t.exp) - nowSec));
     return out;
   };
+})(QLCV);
+
+/* ---- 20_Domain.js ---- */
+/**
+ * Miền nghiệp vụ (domain). Chỉ chứa quy tắc thuần: nhận dữ liệu đã đọc, trả về quyết định hoặc ném lỗi nghiệp vụ.
+ * KHÔNG đọc/ghi dữ liệu, KHÔNG gọi môi trường (Env, Store). Mọi tầng khác phụ thuộc vào đây, không ngược lại.
+ * Thông báo lỗi giữ nguyên từ phiên bản trước để giao diện và kiểm thử không đổi.
+ */
+(function (Q) {
+  'use strict';
+  var U = Q.Util;
+
+  var Domain = Q.Domain = {};
+
+  /* ---------- Công việc ---------- */
+  Domain.Task = {
+    /** Đang mở: chưa hoàn thành và chưa lưu trữ. */
+    isOpen: function (t) { return t.status !== 'completed' && !t.archived_at; },
+    /** Trễ hạn: chưa hoàn thành và hạn trước ngày hôm nay (không xét lưu trữ; xem CODE_REVIEW). */
+    isLate: function (t, today) { return t.status !== 'completed' && t.due_at < today; },
+    /** Hoàn thành là trạng thái cuối và lưu trữ khóa mọi thay đổi. */
+    assertEditable: function (t) {
+      if (t.status === 'completed') U.fail('CONFLICT', 'Công việc đã hoàn thành, không thể thay đổi.');
+      if (t.archived_at) U.fail('CONFLICT', 'Công việc đã được lưu trữ.');
+    },
+    /** R6: CBTD chỉ được tạo công việc mà chính mình là người phụ trách chính. */
+    assertCbtdCreatesForSelf: function (scoped, primaryUserId, actorUserId) {
+      if (scoped && primaryUserId !== actorUserId) {
+        U.fail('FORBIDDEN', 'CBTD chỉ được tạo công việc do chính mình phụ trách chính.');
+      }
+    },
+    /** Trạng thái "completed" chỉ đặt tự động khi duyệt 100% (R8), không đặt tay. */
+    assertNotCompletedByHand: function (status) {
+      if (status === 'completed') U.invalid('status', 'Trạng thái "Đã hoàn thành" chỉ được đặt khi duyệt tiến độ 100%.');
+    }
+  };
+
+  /* ---------- Phân công ---------- */
+  Domain.Assignment = {
+    primaryOf: function (active) { return active.filter(function (a) { return a.assignment_role === 'primary'; })[0]; },
+    collaboratorOf: function (active) { return active.filter(function (a) { return a.assignment_role === 'collaborator'; })[0]; },
+    /** Người phối hợp không được trùng người phụ trách chính (đã kiểm tra khi tạo việc và khi đổi phối hợp). */
+    assertCollaboratorDiffers: function (primary, userId) {
+      if (primary && primary.user_id === userId) U.invalid('userId', 'Người phối hợp phải khác người phụ trách chính.');
+    }
+  };
+
+  /* ---------- Tiến độ & duyệt (R7, R8, R10) ---------- */
+  Domain.Progress = {
+    /** Quyết định duyệt -> trạng thái báo cáo. */
+    statusOf: function (decision) { return decision === 'approve' ? 'approved' : 'rejected'; },
+    /** R8: duyệt 100% khi công việc chưa hoàn thành thì tự động hoàn thành. */
+    completesTask: function (upd, task) {
+      return upd.review_status === 'approved' && upd.progress_pct === 100 && task.status !== 'completed';
+    },
+    /** R10: người lập không được tự duyệt báo cáo của mình. */
+    assertNotSelfReview: function (upd, userId) {
+      if (upd.submitted_by_user_id === userId) {
+        U.fail('FORBIDDEN', 'Không thể tự duyệt báo cáo do chính mình gửi.', { reason: 'SELF_REVIEW' });
+      }
+    }
+  };
+
+  /* ---------- Khách hàng (R17) ---------- */
+  Domain.Customer = {
+    /** Người đại diện công ty chỉ dành cho khách hàng doanh nghiệp. */
+    assertRepresentativeAllowed: function (type, representative) {
+      if (type === 'personal' && representative) {
+        U.invalid('companyRepresentative', 'Chỉ khách hàng doanh nghiệp mới có người đại diện công ty.');
+      }
+    }
+  };
+
+  /* ---------- Người dùng & vai trò ---------- */
+  Domain.User = {
+    /**
+     * Chống tự khóa: người đang đăng nhập không tự hạ quyền hoặc vô hiệu hóa Admin của chính mình,
+     * và hệ thống luôn còn ít nhất một Admin đang hoạt động.
+     * activeAdminCount là một hàm trả về số Admin hoạt động (chỉ gọi khi cần).
+     */
+    assertKeepsAnAdmin: function (actorId, target, adminRoleId, patch, activeAdminCount) {
+      var losesAdmin = (patch.role_id && patch.role_id !== adminRoleId && target.role_id === adminRoleId) ||
+        (patch.status === 'inactive' && target.role_id === adminRoleId);
+      if (!losesAdmin) return;
+      if (target.user_id === actorId) U.fail('CONFLICT', 'Không thể tự hạ quyền hoặc vô hiệu hóa tài khoản Admin của chính mình.');
+      if (activeAdminCount() <= 1) U.fail('CONFLICT', 'Hệ thống phải còn ít nhất một Admin đang hoạt động.');
+    },
+    assertNotSelfDeactivate: function (actorId, targetId, patch) {
+      if (targetId === actorId && patch.status === 'inactive') U.fail('CONFLICT', 'Không thể tự vô hiệu hóa tài khoản của mình.');
+    }
+  };
+
+  /* ---------- Mã hiển thị ---------- */
+  Domain.Codes = {
+    /** Mã công việc hiển thị: CV-0001 từ TSK-1. */
+    taskCodeFor: function (taskId) { return 'CV-' + U.pad(parseInt(taskId.split('-')[1], 10), 4); },
+    /** Mã khách hàng tự sinh: KH-0001 từ CUS-1. */
+    customerCodeFor: function (customerId) { return 'KH-' + U.pad(parseInt(customerId.split('-')[1], 10), 4); }
+  };
+})(QLCV);
+
+/* ---- 21_Access.js ---- */
+/**
+ * Ứng dụng: xác thực người dùng và phân quyền (R1, R3).
+ *  - Auth.authenticate: đổi ID token (Q.GoogleAuth) thành dòng Users đang hoạt động.
+ *  - Q.Policy: ngữ cảnh quyền của người gọi (RBAC từ dữ liệu RolePermissions) và phạm vi bản ghi (CBTD chỉ thấy việc được giao).
+ * Ẩn nút trên giao diện KHÔNG phải là phân quyền; mọi use case đều gọi Policy để kiểm tra lại.
+ * Chỉ đọc dữ liệu qua Q.Repo, không chạm Q.Store trực tiếp.
+ */
+(function (Q) {
+  'use strict';
+  var U = Q.Util;
+
+  var Auth = Q.Auth = {};
+  Auth.verifyToken = function (idToken) { return Q.GoogleAuth.verify(idToken); };
 
   /** Trả về dòng Users đang hoạt động ứng với token. */
   Auth.authenticate = function (idToken) {
     var id = Auth.verifyToken(idToken);
-    var user = Q.Store.findBy('Users', 'email', id.email)[0];
+    var user = Q.Repo.users.byEmail(id.email);
     if (!user) U.fail('FORBIDDEN', 'Tài khoản ' + id.email + ' chưa được cấp quyền sử dụng hệ thống.');
     if (user.status !== 'active') U.fail('FORBIDDEN', 'Tài khoản đã bị vô hiệu hóa.');
     return user;
@@ -606,6 +722,7 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
 
   var Policy = Q.Policy = {};
 
+  /** Email được coi là Giám đốc (cấp thêm quyền task.transfer và dashboard.view_director). Điểm còn mở của plan. */
   function directorEmails() {
     return String(Q.Env.prop('DIRECTOR_EMAILS') || '').split(',')
       .map(function (s) { return s.trim().toLowerCase(); }).filter(Boolean);
@@ -620,10 +737,10 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
   function loadReference() {
     var hit = Q.Env.cacheGet(REF_KEY);
     if (hit) { try { return JSON.parse(hit); } catch (e) { /* hỏng: đọc lại từ Sheets */ } }
-    var S = Q.Store, ref = { roles: {}, byRole: {} }, codeById = {};
-    S.all('Permissions').forEach(function (p) { codeById[p.permission_id] = p.code; });
-    S.all('Roles').forEach(function (r) { ref.roles[r.role_id] = { code: r.code, name: r.name }; });
-    S.all('RolePermissions').forEach(function (rp) {
+    var ref = { roles: {}, byRole: {} }, codeById = {};
+    Q.Repo.permissions.all().forEach(function (p) { codeById[p.permission_id] = p.code; });
+    Q.Repo.roles.all().forEach(function (r) { ref.roles[r.role_id] = { code: r.code, name: r.name }; });
+    Q.Repo.rolePermissions.all().forEach(function (rp) {
       var c = codeById[rp.permission_id];
       if (c) (ref.byRole[rp.role_id] = ref.byRole[rp.role_id] || []).push(c);
     });
@@ -632,12 +749,12 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
   }
   Policy.clearReference = function () { try { Q.Env.cacheRemove(REF_KEY); } catch (e) { /* bỏ qua */ } };
 
+  /** Ngữ cảnh quyền của một người dùng: vai trò, tập quyền, cờ Giám đốc. */
   Policy.build = function (user) {
     var ref = loadReference(), role = ref.roles[user.role_id];
     if (!role) U.fail('FORBIDDEN', 'Vai trò của tài khoản không hợp lệ.');
     var perms = {};
     (ref.byRole[user.role_id] || []).forEach(function (code) { perms[code] = true; });
-    // Cơ chế xác định "Giám đốc" trong BGD (điểm còn mở của plan): danh sách DIRECTOR_EMAILS.
     var isDirector = role.code === 'BGD' && directorEmails().indexOf(user.email) >= 0;
     if (isDirector) { perms['task.transfer'] = true; perms['dashboard.view_director'] = true; }
     return { user: user, role: role.code, roleName: role.name, perms: perms, isDirector: isDirector };
@@ -647,18 +764,19 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
   Policy.require = function (ctx, code) {
     if (!ctx.perms[code]) U.fail('FORBIDDEN', 'Bạn không có quyền thực hiện thao tác này.', { permission: code });
   };
+  /** Phạm vi bị giới hạn: CBTD chỉ thấy công việc/khách hàng liên quan đến phân công của mình. */
   Policy.isScoped = function (ctx) { return ctx.role === 'CBTD'; };
 
   /** Công việc mà người dùng đang được phân công (primary/collaborator còn hiệu lực). */
   Policy.assignedTaskIds = function (userId) {
     var ids = {};
-    Q.Store.findBy('TaskAssignees', 'user_id', userId).forEach(function (a) { if (a.active) ids[a.task_id] = true; });
+    Q.Repo.assignments.activeForUser(userId).forEach(function (a) { ids[a.task_id] = true; });
     return ids;
   };
   Policy.isAssignee = function (ctx, taskId) { return !!Policy.assignedTaskIds(ctx.user.user_id)[taskId]; };
 
   Policy.visibleTasks = function (ctx) {
-    var tasks = Q.Store.all('Tasks');
+    var tasks = Q.Repo.tasks.all();
     if (!Policy.isScoped(ctx)) return tasks;
     var mine = Policy.assignedTaskIds(ctx.user.user_id);
     return tasks.filter(function (t) { return mine[t.task_id]; });
@@ -666,13 +784,13 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
 
   /** Trả về công việc nếu nằm trong phạm vi; ngoài phạm vi trả NOT_FOUND để không lộ sự tồn tại. */
   Policy.taskOrFail = function (ctx, taskId) {
-    var t = Q.Store.find('Tasks', taskId);
+    var t = Q.Repo.tasks.find(taskId);
     if (!t || (Policy.isScoped(ctx) && !Policy.isAssignee(ctx, taskId))) U.fail('NOT_FOUND', 'Không tìm thấy công việc.');
     return t;
   };
 
   Policy.visibleCustomers = function (ctx) {
-    var all = Q.Store.all('Customers');
+    var all = Q.Repo.customers.all();
     if (!Policy.isScoped(ctx)) return all;
     var ids = {};
     Policy.visibleTasks(ctx).forEach(function (t) { ids[t.customer_id] = true; });
@@ -680,7 +798,7 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
   };
 
   Policy.customerOrFail = function (ctx, id) {
-    var c = Q.Store.find('Customers', id);
+    var c = Q.Repo.customers.find(id);
     if (!c) U.fail('NOT_FOUND', 'Không tìm thấy khách hàng.');
     if (Policy.isScoped(ctx)) {
       var ok = Policy.visibleTasks(ctx).some(function (t) { return t.customer_id === id; });
@@ -690,32 +808,189 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
   };
 })(QLCV);
 
-/* ---- 30_Core.js ---- */
+/* ---- 22_Repositories.js ---- */
 /**
- * Thành phần dùng chung: nhật ký kiểm toán (R12), thông báo (R11), DTO trả về cho giao diện.
- * Nội dung thông báo/audit KHÔNG chứa dữ liệu khách hàng nhạy cảm, token, mật khẩu.
+ * Tầng adapter truy cập dữ liệu. Đây là điểm DUY NHẤT trong lõi nghiệp vụ được chạm tới Q.Store;
+ * các use case và Policy chỉ làm việc qua Q.Repo, nên đổi nơi lưu (Sheets / bộ nhớ / PostgreSQL)
+ * chỉ cần thay driver bên dưới, không sửa nghiệp vụ.
+ * Q.Store được đọc lúc gọi (không lúc nạp), vì môi trường bộ nhớ được gắn sau khi các tệp này đã chạy.
+ */
+(function (Q) {
+  'use strict';
+
+  function S() { return Q.Store; }
+
+  /** Các thao tác chung cho mọi bảng. */
+  function repoOf(table) {
+    return {
+      table: table,
+      all: function () { return S().all(table); },
+      find: function (id) { return S().find(table, id); },
+      where: function (pred) { return S().where(table, pred); },
+      findBy: function (col, val) { return S().findBy(table, col, val); },
+      insert: function (obj) { return S().insert(table, obj); },
+      insertMany: function (objs) { return S().insertMany(table, objs); },
+      update: function (id, patch) { return S().update(table, id, patch); },
+      nextId: function () { return S().nextId(table); },
+      count: function () { return S().count(table); }
+    };
+  }
+
+  var Repo = Q.Repo = {
+    users: repoOf('Users'),
+    roles: repoOf('Roles'),
+    permissions: repoOf('Permissions'),
+    rolePermissions: repoOf('RolePermissions'),
+    customers: repoOf('Customers'),
+    tasks: repoOf('Tasks'),
+    assignments: repoOf('TaskAssignees'),
+    updates: repoOf('TaskUpdates'),
+    notifications: repoOf('Notifications'),
+    audit: repoOf('AuditLogs')
+  };
+
+  /** Xóa bộ nhớ đệm dữ liệu của mọi bảng cho request hiện tại (đầu mỗi request). */
+  Repo.resetCache = function () { S().reset(); };
+
+  /** Repository của một bảng bất kỳ theo tên (dùng cho kiểm tra toàn vẹn quét mọi bảng). */
+  Repo.of = repoOf;
+
+  /* ---------- Truy vấn theo nghiệp vụ ---------- */
+  Repo.users.byEmail = function (email) { return Repo.users.findBy('email', email)[0] || null; };
+  Repo.users.byEmployeeCode = function (code) { return Repo.users.findBy('employee_code', code); };
+  Repo.users.byRole = function (roleId) { return Repo.users.where(function (u) { return u.role_id === roleId; }); };
+
+  Repo.roles.idByCode = function (code) {
+    var r = Repo.roles.findBy('code', code)[0];
+    return r ? r.role_id : null;
+  };
+
+  Repo.customers.byCode = function (code) { return Repo.customers.findBy('customer_code', code); };
+
+  Repo.tasks.byCustomer = function (customerId) { return Repo.tasks.findBy('customer_id', customerId); };
+
+  /** Toàn bộ phân công (kể cả đã gỡ) của một công việc. */
+  Repo.assignments.forTask = function (taskId) { return Repo.assignments.findBy('task_id', taskId); };
+  /** Phân công còn hiệu lực của một công việc. */
+  Repo.assignments.activeForTask = function (taskId) {
+    return Repo.assignments.forTask(taskId).filter(function (a) { return a.active; });
+  };
+  /** Phân công còn hiệu lực của một người dùng. */
+  Repo.assignments.activeForUser = function (userId) {
+    return Repo.assignments.findBy('user_id', userId).filter(function (a) { return a.active; });
+  };
+
+  Repo.updates.forTask = function (taskId) { return Repo.updates.findBy('task_id', taskId); };
+  Repo.updates.pending = function () {
+    return Repo.updates.where(function (u) { return u.review_status === 'pending'; });
+  };
+
+  Repo.notifications.forRecipient = function (userId) { return Repo.notifications.findBy('recipient_user_id', userId); };
+  Repo.notifications.unreadFor = function (userId) {
+    return Repo.notifications.forRecipient(userId).filter(function (n) { return !n.read_at; });
+  };
+  Repo.notifications.byKey = function (key) { return Repo.notifications.findBy('request_or_event_key', key); };
+
+  Repo.audit.byKey = function (key) { return Repo.audit.findBy('request_or_event_key', key)[0] || null; };
+})(QLCV);
+
+/* ---- 23_Presenters.js ---- */
+/**
+ * Tầng trình bày (adapter ra ngoài): chuyển bản ghi lưu trữ thành DTO trả về cho giao diện.
+ * Mọi tên trường DTO (camelCase) và cấu trúc JSON giữ nguyên hợp đồng API (xem docs/API.md).
+ * Không ghi dữ liệu. Chỉ tra đúng các dòng liên quan qua chỉ mục, không quét cả bảng cho mỗi bản ghi.
  */
 (function (Q) {
   'use strict';
   var U = Q.Util;
 
-  /** Quy tắc nghiệp vụ dùng chung cho công việc: một nơi duy nhất cho định nghĩa "đang mở" và "trễ hạn". */
-  Q.Rules = {
-    /** Đang mở: chưa hoàn thành và chưa lưu trữ. */
-    isOpen: function (t) { return t.status !== 'completed' && !t.archived_at; },
-    /** Trễ hạn: chưa hoàn thành và hạn trước ngày hôm nay (không xét lưu trữ; xem CODE_REVIEW). */
-    isLate: function (t, today) { return t.status !== 'completed' && t.due_at < today; }
+  /** Tham chiếu người dùng cho giao diện; người không còn trong bảng vẫn hiện được theo mã. */
+  function userRef(id) {
+    var u = Q.Repo.users.find(id);
+    return u ? { userId: u.user_id, name: u.full_name } : { userId: id, name: id || '' };
+  }
+
+  var Presenters = Q.Presenters = {};
+
+  Presenters.userRef = userRef;
+
+  Presenters.tasks = function (ctx, tasks) {
+    var today = U.today();
+    return tasks.map(function (t) {
+      var p = null, c = null, k = Q.Repo.customers.find(t.customer_id), approved = 0, pending = 0;
+      Q.Repo.assignments.forTask(t.task_id).forEach(function (a) {
+        if (!a.active) return;
+        if (a.assignment_role === 'primary') p = a; else c = a;
+      });
+      Q.Repo.updates.forTask(t.task_id).forEach(function (u) {
+        if (u.review_status === 'approved') approved = Math.max(approved, u.progress_pct || 0);
+        if (u.review_status === 'pending') pending++;
+      });
+      return {
+        taskId: t.task_id, taskCode: t.task_code, title: t.title, description: t.description,
+        status: t.status, priority: t.priority, dueAt: t.due_at,
+        overdue: Q.Domain.Task.isOpen(t) && Q.Domain.Task.isLate(t, today),
+        archived: !!t.archived_at,
+        customer: k ? { customerId: k.customer_id, code: k.customer_code, name: k.name } : null,
+        primary: p ? userRef(p.user_id) : null,
+        collaborator: c ? userRef(c.user_id) : null,
+        createdBy: userRef(t.created_by_user_id),
+        createdAt: t.created_at, updatedAt: t.updated_at, completedAt: t.completed_at || null,
+        approvedProgress: approved, pendingUpdates: pending
+      };
+    });
   };
 
+  Presenters.updates = function (updates) {
+    return updates.map(function (u) {
+      return {
+        updateId: u.update_id, taskId: u.task_id, progressPct: u.progress_pct, narrative: u.narrative,
+        submittedBy: userRef(u.submitted_by_user_id), submittedAt: u.submitted_at,
+        reviewStatus: u.review_status,
+        reviewedBy: u.reviewed_by_user_id ? userRef(u.reviewed_by_user_id) : null,
+        reviewedAt: u.reviewed_at || null, reviewComment: u.review_comment || ''
+      };
+    });
+  };
+
+  Presenters.customer = function (c) {
+    return {
+      customerId: c.customer_id, customerCode: c.customer_code, name: c.name, type: c.type, phone: c.phone,
+      status: c.status, companyRepresentative: c.company_representative || '',
+      archived: !!c.archived_at, createdAt: c.created_at, updatedAt: c.updated_at
+    };
+  };
+
+  Presenters.user = function (u, roles) {
+    var r = roles ? roles[u.role_id] : null;
+    return {
+      userId: u.user_id, email: u.email, employeeCode: u.employee_code, fullName: u.full_name,
+      roleId: u.role_id, roleCode: r ? r.code : '', orgUnit: u.org_unit, status: u.status,
+      createdAt: u.created_at, updatedAt: u.updated_at
+    };
+  };
+})(QLCV);
+
+/* ---- 24_Activity.js ---- */
+/**
+ * Ứng dụng: nhật ký kiểm toán (R12) và thông báo trong ứng dụng (R11).
+ * Cả hai đều idempotent theo khóa sự kiện: ghi lại cùng một khóa sẽ không tạo dòng thứ hai.
+ * Nội dung KHÔNG chứa dữ liệu khách hàng nhạy cảm, token hay mật khẩu.
+ */
+(function (Q) {
+  'use strict';
+  var U = Q.Util;
+
+  /** Nhật ký chỉ được ghi thêm. */
   Q.Audit = {
     /** Dòng nhật ký đã ghi với khóa này (dùng để chống ghi trùng khi thử lại), hoặc null. */
-    find: function (key) { return Q.Store.findBy('AuditLogs', 'request_or_event_key', key)[0] || null; },
+    find: function (key) { return Q.Repo.audit.byKey(key); },
     has: function (key) { return Q.Audit.find(key) !== null; },
-    /** Ghi thêm một dòng; trả null nếu key đã tồn tại (idempotent). */
+    /** Ghi thêm một dòng; trả null nếu khóa đã tồn tại. */
     log: function (ctx, action, entityType, entityId, key) {
       if (Q.Audit.has(key)) return null;
-      return Q.Store.insert('AuditLogs', {
-        audit_id: Q.Store.nextId('AuditLogs'),
+      return Q.Repo.audit.insert({
+        audit_id: Q.Repo.audit.nextId(),
         actor_user_id: ctx.user.user_id,
         actor_email_snapshot: ctx.user.email,
         action: action, entity_type: entityType, entity_id: entityId,
@@ -728,106 +1003,57 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     /** Khóa khử trùng lặp: evt-<loại>-<bản ghi nguồn>-<người nhận>. */
     send: function (recipientId, eventType, sourceId, message) {
       var key = 'evt-' + eventType + '-' + sourceId + '-' + recipientId;
-      if (Q.Store.findBy('Notifications', 'request_or_event_key', key).length) return null;
-      return Q.Store.insert('Notifications', {
-        notification_id: Q.Store.nextId('Notifications'),
+      if (Q.Repo.notifications.byKey(key).length) return null;
+      return Q.Repo.notifications.insert({
+        notification_id: Q.Repo.notifications.nextId(),
         recipient_user_id: recipientId, event_type: eventType, source_record_id: sourceId,
         request_or_event_key: key, message: String(message).slice(0, 300), created_at: U.isoNow(), read_at: ''
       });
     }
   };
+})(QLCV);
 
-  /** Tham chiếu người dùng cho giao diện; người không còn trong bảng vẫn hiện được theo mã. */
-  function userRef(id) {
-    var u = Q.Store.find('Users', id);
-    return u ? { userId: u.user_id, name: u.full_name } : { userId: id, name: id || '' };
-  }
+/* ---- 25_Assignments.js ---- */
+/**
+ * Ứng dụng: phân công công việc và xác định người nhận thông báo duyệt.
+ * Quy tắc "một người phụ trách chính, tối đa một người phối hợp" được kiểm tra ở Domain.Assignment và tại use case;
+ * module này chỉ thực hiện thao tác phân công (thêm/gỡ) kèm nhật ký và thông báo.
+ */
+(function (Q) {
+  'use strict';
+  var U = Q.Util;
 
-  var DTO = Q.DTO = {};
-
-  /** Chuyển công việc sang DTO. Chỉ tra đúng các dòng liên quan qua chỉ mục (không quét cả bảng cho mỗi công việc). */
-  DTO.tasks = function (ctx, tasks) {
-    var S = Q.Store, today = U.today();
-    return tasks.map(function (t) {
-      var p = null, c = null, k = S.find('Customers', t.customer_id), approved = 0, pending = 0;
-      S.findBy('TaskAssignees', 'task_id', t.task_id).forEach(function (a) {
-        if (!a.active) return;
-        if (a.assignment_role === 'primary') p = a; else c = a;
-      });
-      S.findBy('TaskUpdates', 'task_id', t.task_id).forEach(function (u) {
-        if (u.review_status === 'approved') approved = Math.max(approved, u.progress_pct || 0);
-        if (u.review_status === 'pending') pending++;
-      });
-      return {
-        taskId: t.task_id, taskCode: t.task_code, title: t.title, description: t.description,
-        status: t.status, priority: t.priority, dueAt: t.due_at,
-        overdue: Q.Rules.isOpen(t) && Q.Rules.isLate(t, today),
-        archived: !!t.archived_at,
-        customer: k ? { customerId: k.customer_id, code: k.customer_code, name: k.name } : null,
-        primary: p ? userRef(p.user_id) : null,
-        collaborator: c ? userRef(c.user_id) : null,
-        createdBy: userRef(t.created_by_user_id),
-        createdAt: t.created_at, updatedAt: t.updated_at, completedAt: t.completed_at || null,
-        approvedProgress: approved, pendingUpdates: pending
-      };
-    });
-  };
-
-  DTO.updates = function (updates) {
-    return updates.map(function (u) {
-      return {
-        updateId: u.update_id, taskId: u.task_id, progressPct: u.progress_pct, narrative: u.narrative,
-        submittedBy: userRef(u.submitted_by_user_id), submittedAt: u.submitted_at,
-        reviewStatus: u.review_status,
-        reviewedBy: u.reviewed_by_user_id ? userRef(u.reviewed_by_user_id) : null,
-        reviewedAt: u.reviewed_at || null, reviewComment: u.review_comment || ''
-      };
-    });
-  };
-
-  DTO.customer = function (c) {
-    return {
-      customerId: c.customer_id, customerCode: c.customer_code, name: c.name, type: c.type, phone: c.phone,
-      status: c.status, companyRepresentative: c.company_representative || '',
-      archived: !!c.archived_at, createdAt: c.created_at, updatedAt: c.updated_at
-    };
-  };
-
-  DTO.user = function (u, roles) {
-    var r = roles ? roles[u.role_id] : null;
-    return {
-      userId: u.user_id, email: u.email, employeeCode: u.employee_code, fullName: u.full_name,
-      roleId: u.role_id, roleCode: r ? r.code : '', orgUnit: u.org_unit, status: u.status,
-      createdAt: u.created_at, updatedAt: u.updated_at
-    };
-  };
-
-  Q.Core = {
-    /** Những người cần được thông báo khi có tiến độ chờ duyệt: KSV cùng đơn vị (nếu không có thì mọi KSV) + Admin. */
+  Q.Assignments = {
+    /**
+     * Những người cần được thông báo khi có tiến độ chờ duyệt: KSV cùng đơn vị (nếu không có thì mọi KSV) + Admin.
+     * Không gồm chính người gửi.
+     */
     reviewersFor: function (submitter) {
-      var S = Q.Store, roleByCode = {};
-      S.all('Roles').forEach(function (r) { roleByCode[r.code] = r.role_id; });
-      var active = S.all('Users').filter(function (u) { return u.status === 'active' && u.user_id !== submitter.user_id; });
+      var roleByCode = {};
+      Q.Repo.roles.all().forEach(function (r) { roleByCode[r.code] = r.role_id; });
+      var active = Q.Repo.users.all().filter(function (u) { return u.status === 'active' && u.user_id !== submitter.user_id; });
       var ksv = active.filter(function (u) { return u.role_id === roleByCode.KSV; });
       var sameUnit = ksv.filter(function (u) { return u.org_unit === submitter.org_unit; });
       var admins = active.filter(function (u) { return u.role_id === roleByCode.Admin; });
       return (sameUnit.length ? sameUnit : ksv).concat(admins);
     },
-    activeAssignments: function (taskId) {
-      return Q.Store.findBy('TaskAssignees', 'task_id', taskId).filter(function (a) { return a.active; });
-    },
-    /** Người dùng CBTD đang hoạt động hợp lệ để phân công. */
+
+    activeOf: function (taskId) { return Q.Repo.assignments.activeForTask(taskId); },
+
+    /** Người dùng CBTD đang hoạt động hợp lệ để phân công; sai thì báo lỗi VALIDATION tại trường field. */
     assigneeOrFail: function (userId, field) {
-      var u = Q.Store.find('Users', userId);
-      var role = u && Q.Store.find('Roles', u.role_id);
+      var u = Q.Repo.users.find(userId);
+      var role = u && Q.Repo.roles.find(u.role_id);
       if (!u || u.status !== 'active' || !role || role.code !== 'CBTD') {
         U.invalid(field, 'Người được giao phải là cán bộ tín dụng (CBTD) đang hoạt động.');
       }
       return u;
     },
+
+    /** Thêm phân công, ghi nhật ký và thông báo người được giao (trừ khi tự phân công cho mình). */
     addAssignment: function (ctx, task, user, role) {
-      var a = Q.Store.insert('TaskAssignees', {
-        assignment_id: Q.Store.nextId('TaskAssignees'), task_id: task.task_id, user_id: user.user_id,
+      var a = Q.Repo.assignments.insert({
+        assignment_id: Q.Repo.assignments.nextId(), task_id: task.task_id, user_id: user.user_id,
         assignee_email_snapshot: user.email, assignment_role: role, assigned_at: U.isoNow(), active: true
       });
       Q.Audit.log(ctx, 'task.assign', 'TaskAssignee', a.assignment_id, 'evt-task.assign-' + a.assignment_id);
@@ -836,26 +1062,26 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
       }
       return a;
     },
-    deactivate: function (a) { return Q.Store.update('TaskAssignees', a.assignment_id, { active: false }); }
+
+    /** Gỡ phân công: đặt active = false, không xóa dòng (giữ lịch sử). */
+    deactivate: function (a) { return Q.Repo.assignments.update(a.assignment_id, { active: false }); }
   };
 })(QLCV);
 
 /* ---- 40_Svc_Tasks.js ---- */
-/** Công việc & phân công (R5, R6, R17). Mọi thao tác ghi đều idempotent theo requestId. */
+/**
+ * Use case: công việc và phân công (R5, R6, R17). Ghi dữ liệu đều idempotent theo requestId.
+ * Quy tắc thuần nằm ở Q.Domain; truy cập dữ liệu qua Q.Repo; DTO qua Q.Presenters.
+ */
 (function (Q) {
   'use strict';
-  var U = Q.Util, P = Q.Policy, S = function () { return Q.Store; };
-  var L = Q.Config.LIMITS, E = Q.Enums;
+  var U = Q.Util, P = Q.Policy, E = Q.Enums, L = Q.Config.LIMITS, D = Q.Domain;
 
-  function openOrFail(task) {
-    if (task.status === 'completed') U.fail('CONFLICT', 'Công việc đã hoàn thành, không thể thay đổi.');
-    if (task.archived_at) U.fail('CONFLICT', 'Công việc đã được lưu trữ.');
-  }
-
-  function dtoOf(ctx, taskId) { return Q.DTO.tasks(ctx, [S().find('Tasks', taskId)])[0]; }
+  function dtoOf(ctx, taskId) { return Q.Presenters.tasks(ctx, [Q.Repo.tasks.find(taskId)])[0]; }
 
   var T = Q.TaskService = {};
 
+  /** Danh sách có lọc, tìm kiếm không dấu, sắp xếp và phân trang. Chỉ dựng DTO cho trang đang xem. */
   T.list = function (ctx, p) {
     P.require(ctx, 'task.view');
     p = p || {};
@@ -864,15 +1090,14 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     if (p.status) tasks = tasks.filter(function (t) { return t.status === p.status; });
     if (p.priority) tasks = tasks.filter(function (t) { return t.priority === p.priority; });
     if (p.customerId) tasks = tasks.filter(function (t) { return t.customer_id === p.customerId; });
-    if (U.bool(p.overdue)) tasks = tasks.filter(function (t) { return Q.Rules.isLate(t, today); });
+    if (U.bool(p.overdue)) tasks = tasks.filter(function (t) { return D.Task.isLate(t, today); });
     if (U.bool(p.mine)) { var mine = P.assignedTaskIds(ctx.user.user_id); tasks = tasks.filter(function (t) { return mine[t.task_id]; }); }
     if (p.assigneeUserId) { var theirs = P.assignedTaskIds(p.assigneeUserId); tasks = tasks.filter(function (t) { return theirs[t.task_id]; }); }
 
-    // Lọc và sắp xếp trên dòng thô; DTO (tra phân công, tiến độ, khách hàng) chỉ dựng cho trang đang xem.
     if (p.q) {
       var q = U.norm(String(p.q).slice(0, 100));
       tasks = tasks.filter(function (t) {
-        var c = S().find('Customers', t.customer_id);
+        var c = Q.Repo.customers.find(t.customer_id);
         return U.norm(t.title + ' ' + t.task_code + ' ' + (c ? c.name : '')).indexOf(q) >= 0;
       });
     }
@@ -889,25 +1114,26 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     var keyed = tasks.map(function (t) { return { t: t, k: keyFns[by](t) }; });   // khóa tính một lần/dòng
     keyed.sort(function (x, y) { return x.k < y.k ? -m : x.k > y.k ? m : 0; });
     var page = U.paginate(keyed.map(function (e) { return e.t; }), p);
-    page.items = Q.DTO.tasks(ctx, page.items);
+    page.items = Q.Presenters.tasks(ctx, page.items);
     return page;
   };
 
+  /** Chi tiết công việc kèm lịch sử tiến độ, danh sách phân công và cờ "can" cho giao diện. */
   T.get = function (ctx, p) {
     P.require(ctx, 'task.view');
     var t = P.taskOrFail(ctx, p && p.taskId);
-    var updates = S().findBy('TaskUpdates', 'task_id', t.task_id);
-    var history = S().findBy('TaskAssignees', 'task_id', t.task_id).map(function (a) {
-      var u = S().find('Users', a.user_id);
+    var updates = Q.Repo.updates.forTask(t.task_id);
+    var history = Q.Repo.assignments.forTask(t.task_id).map(function (a) {
+      var u = Q.Repo.users.find(a.user_id);
       return { assignmentId: a.assignment_id, userId: a.user_id, name: u ? u.full_name : a.assignee_email_snapshot,
         role: a.assignment_role, assignedAt: a.assigned_at, active: a.active };
     });
     var me = ctx.user.user_id;
     var mineActive = history.some(function (h) { return h.userId === me && h.active; });
-    var open = t.status !== 'completed' && !t.archived_at;
+    var open = D.Task.isOpen(t);
     return {
-      task: Q.DTO.tasks(ctx, [t])[0],
-      updates: Q.DTO.updates(U.sortBy(updates, function (u) { return u.submitted_at + u.update_id; }, 'desc')),
+      task: Q.Presenters.tasks(ctx, [t])[0],
+      updates: Q.Presenters.updates(U.sortBy(updates, function (u) { return u.submitted_at + u.update_id; }, 'desc')),
       assignments: history,
       can: {
         start: open && t.status === 'not_started' && P.has(ctx, 'task.start') && (!P.isScoped(ctx) || mineActive),
@@ -920,6 +1146,7 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     };
   };
 
+  /** Tạo công việc (R6: CBTD chỉ tạo khi là người phụ trách chính). Thử lại cùng requestId trả về việc đã tạo. */
   T.create = function (ctx, p, meta) {
     P.require(ctx, 'task.create');
     var key = 'evt-task.create-' + meta.requestId;
@@ -932,61 +1159,60 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     var dueAt = U.ymd(p.dueAt, { field: 'dueAt', label: 'Hạn xử lý', required: true });
     if (dueAt < U.today()) U.invalid('dueAt', 'Hạn xử lý không được nằm trong quá khứ.');
 
-    var customer = S().find('Customers', p.customerId);
+    var customer = Q.Repo.customers.find(p.customerId);
     if (!customer || customer.archived_at) U.invalid('customerId', 'Khách hàng không tồn tại hoặc đã lưu trữ.');
     if (P.isScoped(ctx) && !p.primaryUserId) p.primaryUserId = ctx.user.user_id;
     if (!p.primaryUserId) U.invalid('primaryUserId', 'Cần chọn cán bộ phụ trách chính.');
-    // R6: CBTD chỉ được tạo công việc khi chính mình là người phụ trách chính.
-    if (P.isScoped(ctx) && p.primaryUserId !== ctx.user.user_id) {
-      U.fail('FORBIDDEN', 'CBTD chỉ được tạo công việc do chính mình phụ trách chính.');
-    }
-    var primary = Q.Core.assigneeOrFail(p.primaryUserId, 'primaryUserId');
+    D.Task.assertCbtdCreatesForSelf(P.isScoped(ctx), p.primaryUserId, ctx.user.user_id);
+    var primary = Q.Assignments.assigneeOrFail(p.primaryUserId, 'primaryUserId');
     var collab = null;
     if (p.collaboratorUserId) {
       if (p.collaboratorUserId === p.primaryUserId) U.invalid('collaboratorUserId', 'Người phối hợp phải khác người phụ trách chính.');
-      collab = Q.Core.assigneeOrFail(p.collaboratorUserId, 'collaboratorUserId');
+      collab = Q.Assignments.assigneeOrFail(p.collaboratorUserId, 'collaboratorUserId');
     }
 
-    var id = S().nextId('Tasks'), now = U.isoNow();
-    var task = S().insert('Tasks', {
-      task_id: id, task_code: 'CV-' + U.pad(parseInt(id.split('-')[1], 10), 4), customer_id: customer.customer_id,
+    var id = Q.Repo.tasks.nextId(), now = U.isoNow();
+    var task = Q.Repo.tasks.insert({
+      task_id: id, task_code: D.Codes.taskCodeFor(id), customer_id: customer.customer_id,
       title: title, description: description, status: 'not_started', priority: priority, due_at: dueAt,
       created_by_user_id: ctx.user.user_id, completed_at: '', created_at: now, updated_at: now, archived_at: ''
     });
     Q.Audit.log(ctx, 'task.create', 'Task', task.task_id, key);
-    Q.Core.addAssignment(ctx, task, primary, 'primary');
-    if (collab) Q.Core.addAssignment(ctx, task, collab, 'collaborator');
+    Q.Assignments.addAssignment(ctx, task, primary, 'primary');
+    if (collab) Q.Assignments.addAssignment(ctx, task, collab, 'collaborator');
     return { task: dtoOf(ctx, task.task_id), replayed: false };
   };
 
+  /** Sửa thông tin công việc; "hoàn thành" không đặt được bằng tay (R8). */
   T.update = function (ctx, p, meta) {
     P.require(ctx, 'task.update');
     var task = P.taskOrFail(ctx, p.taskId);
-    openOrFail(task);
+    D.Task.assertEditable(task);
     var patch = {}, changed = [];
     if (p.title !== undefined) { patch.title = U.str(p.title, { field: 'title', label: 'Tiêu đề', required: true, max: L.title }); changed.push('title'); }
     if (p.description !== undefined) { patch.description = U.str(p.description, { field: 'description', label: 'Mô tả', max: L.description }); changed.push('description'); }
     if (p.priority !== undefined) { patch.priority = U.oneOf(p.priority, E.priority, { field: 'priority', label: 'Mức ưu tiên', required: true }); changed.push('priority'); }
     if (p.dueAt !== undefined) { patch.due_at = U.ymd(p.dueAt, { field: 'dueAt', label: 'Hạn xử lý', required: true }); changed.push('dueAt'); }
     if (p.status !== undefined) {
-      if (p.status === 'completed') U.invalid('status', 'Trạng thái "Đã hoàn thành" chỉ được đặt khi duyệt tiến độ 100%.');
+      D.Task.assertNotCompletedByHand(p.status);
       patch.status = U.oneOf(p.status, E.manualTaskStatus, { field: 'status', label: 'Trạng thái', required: true });
       changed.push('status');
     }
     if (!changed.length) U.invalid(null, 'Không có thay đổi nào để lưu.');
     patch.updated_at = U.isoNow();
-    S().update('Tasks', task.task_id, patch);
+    Q.Repo.tasks.update(task.task_id, patch);
     Q.Audit.log(ctx, 'task.update', 'Task', task.task_id, 'evt-task.update-' + meta.requestId);
     return { task: dtoOf(ctx, task.task_id) };
   };
 
+  /** CBTD được giao bắt đầu công việc: not_started -> in_progress. */
   T.start = function (ctx, p, meta) {
     P.require(ctx, 'task.start');
     var task = P.taskOrFail(ctx, p.taskId);
-    openOrFail(task);
+    D.Task.assertEditable(task);
     if (P.isScoped(ctx) && !P.isAssignee(ctx, task.task_id)) U.fail('FORBIDDEN', 'Bạn không được giao công việc này.');
     if (task.status !== 'not_started') U.fail('CONFLICT', 'Công việc đã được bắt đầu.');
-    S().update('Tasks', task.task_id, { status: 'in_progress', updated_at: U.isoNow() });
+    Q.Repo.tasks.update(task.task_id, { status: 'in_progress', updated_at: U.isoNow() });
     Q.Audit.log(ctx, 'task.start', 'Task', task.task_id, 'evt-task.start-' + meta.requestId);
     return { task: dtoOf(ctx, task.task_id) };
   };
@@ -995,40 +1221,41 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
   T.transfer = function (ctx, p, meta) {
     P.require(ctx, 'task.transfer');
     var task = P.taskOrFail(ctx, p.taskId);
-    openOrFail(task);
-    var next = Q.Core.assigneeOrFail(p.newPrimaryUserId, 'newPrimaryUserId');
-    var active = Q.Core.activeAssignments(task.task_id);
-    var cur = active.filter(function (a) { return a.assignment_role === 'primary'; })[0];
+    D.Task.assertEditable(task);
+    var next = Q.Assignments.assigneeOrFail(p.newPrimaryUserId, 'newPrimaryUserId');
+    var active = Q.Assignments.activeOf(task.task_id);
+    var cur = D.Assignment.primaryOf(active);
     if (cur && cur.user_id === next.user_id) U.invalid('newPrimaryUserId', 'Người này đang là người phụ trách chính.');
     var key = 'evt-task.transfer-' + meta.requestId;
     if (Q.Audit.has(key)) return { task: dtoOf(ctx, task.task_id), replayed: true };
 
     active.forEach(function (a) {
       // Người nhận việc đang là người phối hợp thì thôi phối hợp để không trùng vai.
-      if (a.assignment_role === 'primary' || a.user_id === next.user_id) Q.Core.deactivate(a);
+      if (a.assignment_role === 'primary' || a.user_id === next.user_id) Q.Assignments.deactivate(a);
     });
-    Q.Core.addAssignment(ctx, task, next, 'primary');
-    S().update('Tasks', task.task_id, { updated_at: U.isoNow() });
+    Q.Assignments.addAssignment(ctx, task, next, 'primary');
+    Q.Repo.tasks.update(task.task_id, { updated_at: U.isoNow() });
     Q.Audit.log(ctx, 'task.transfer', 'Task', task.task_id, key);
     return { task: dtoOf(ctx, task.task_id), replayed: false };
   };
 
+  /** Đặt hoặc gỡ người phối hợp (một người tối đa). */
   T.setCollaborator = function (ctx, p, meta) {
     P.require(ctx, 'task.update');
     var task = P.taskOrFail(ctx, p.taskId);
-    openOrFail(task);
-    var active = Q.Core.activeAssignments(task.task_id);
-    var primary = active.filter(function (a) { return a.assignment_role === 'primary'; })[0];
-    var oldC = active.filter(function (a) { return a.assignment_role === 'collaborator'; })[0];
+    D.Task.assertEditable(task);
+    var active = Q.Assignments.activeOf(task.task_id);
+    var primary = D.Assignment.primaryOf(active);
+    var oldC = D.Assignment.collaboratorOf(active);
     var next = null;
     if (p.userId) {
-      next = Q.Core.assigneeOrFail(p.userId, 'userId');
-      if (primary && primary.user_id === next.user_id) U.invalid('userId', 'Người phối hợp phải khác người phụ trách chính.');
+      next = Q.Assignments.assigneeOrFail(p.userId, 'userId');
+      D.Assignment.assertCollaboratorDiffers(primary, next.user_id);
       if (oldC && oldC.user_id === next.user_id) return { task: dtoOf(ctx, task.task_id) };
     }
-    if (oldC) Q.Core.deactivate(oldC);
-    if (next) Q.Core.addAssignment(ctx, task, next, 'collaborator');
-    S().update('Tasks', task.task_id, { updated_at: U.isoNow() });
+    if (oldC) Q.Assignments.deactivate(oldC);
+    if (next) Q.Assignments.addAssignment(ctx, task, next, 'collaborator');
+    Q.Repo.tasks.update(task.task_id, { updated_at: U.isoNow() });
     Q.Audit.log(ctx, 'task.update', 'Task', task.task_id, 'evt-task.collab-' + meta.requestId);
     return { task: dtoOf(ctx, task.task_id) };
   };
@@ -1039,7 +1266,7 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     var task = P.taskOrFail(ctx, p.taskId);
     var archive = p.archived === undefined ? true : U.bool(p.archived);
     if (archive === !!task.archived_at) return { task: dtoOf(ctx, task.task_id) };
-    S().update('Tasks', task.task_id, { archived_at: archive ? U.isoNow() : '', updated_at: U.isoNow() });
+    Q.Repo.tasks.update(task.task_id, { archived_at: archive ? U.isoNow() : '', updated_at: U.isoNow() });
     Q.Audit.log(ctx, archive ? 'task.archive' : 'task.restore', 'Task', task.task_id, 'evt-task.archive-' + meta.requestId);
     return { task: dtoOf(ctx, task.task_id) };
   };
@@ -1047,16 +1274,15 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
 
 /* ---- 41_Svc_Progress.js ---- */
 /**
- * Tiến độ & phê duyệt (R7, R8).
- * - TaskUpdates chỉ ghi thêm; chỉ các cột duyệt được đổi (Store chặn sửa cột khác).
- * - Duyệt 100% -> tự động hoàn thành công việc (R8). Hoàn thành là trạng thái cuối (mặc định của plan).
- * - Người duyệt không được trùng người gửi (tách người lập – người duyệt).
- * - Side-effect của duyệt được làm lại an toàn khi retry/ sự cố giữa chừng (ensureReviewEffects idempotent).
+ * Use case: tiến độ và phê duyệt (R7, R8, R10).
+ * - TaskUpdates chỉ ghi thêm; duyệt chỉ đổi các cột duyệt (Repo/Store chặn sửa cột bất biến).
+ * - Duyệt 100% tự động hoàn thành công việc (R8); hoàn thành là trạng thái cuối.
+ * - Người duyệt không được trùng người gửi (R10).
+ * - Hệ quả của một lần duyệt được làm lại an toàn khi thử lại hoặc sự cố giữa chừng (ensureReviewEffects idempotent).
  */
 (function (Q) {
   'use strict';
-  var U = Q.Util, P = Q.Policy, L = Q.Config.LIMITS;
-  function S() { return Q.Store; }
+  var U = Q.Util, P = Q.Policy, L = Q.Config.LIMITS, D = Q.Domain;
 
   var G = Q.ProgressService = {};
 
@@ -1064,7 +1290,7 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     P.require(ctx, 'progress.submit');
     var key = 'evt-progress.submit-' + meta.requestId;
     var dup = Q.Audit.find(key);
-    if (dup) return { update: Q.DTO.updates([S().find('TaskUpdates', dup.entity_id)])[0], replayed: true };
+    if (dup) return { update: Q.Presenters.updates([Q.Repo.updates.find(dup.entity_id)])[0], replayed: true };
 
     var task = P.taskOrFail(ctx, p.taskId);
     if (task.archived_at) U.fail('CONFLICT', 'Công việc đã được lưu trữ.');
@@ -1074,34 +1300,34 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     var pct = U.pct(p.progressPct, { field: 'progressPct' });
     var narrative = U.str(p.narrative, { field: 'narrative', label: 'Nội dung diễn giải', required: true, min: 5, max: L.narrative });
 
-    var u = S().insert('TaskUpdates', {
-      update_id: S().nextId('TaskUpdates'), task_id: task.task_id, progress_pct: pct, narrative: narrative,
+    var u = Q.Repo.updates.insert({
+      update_id: Q.Repo.updates.nextId(), task_id: task.task_id, progress_pct: pct, narrative: narrative,
       submitted_by_user_id: ctx.user.user_id, submitted_by_email_snapshot: ctx.user.email, submitted_at: U.isoNow(),
       review_status: 'pending', reviewed_by_user_id: '', reviewed_by_email_snapshot: '', reviewed_at: '', review_comment: ''
     });
     Q.Audit.log(ctx, 'progress.submit', 'TaskUpdate', u.update_id, key);
-    Q.Core.reviewersFor(ctx.user).forEach(function (r) {
+    Q.Assignments.reviewersFor(ctx.user).forEach(function (r) {
       Q.Notify.send(r.user_id, 'progress_submitted', u.update_id,
         'Có cập nhật tiến độ mới cần duyệt cho ' + task.task_code + ' (' + pct + '%)');
     });
-    return { update: Q.DTO.updates([u])[0], replayed: false };
+    return { update: Q.Presenters.updates([u])[0], replayed: false };
   };
 
   /** Làm (hoặc làm lại) mọi hệ quả của một lần duyệt; mỗi bước đều idempotent theo khóa sự kiện. */
   function ensureReviewEffects(ctx, upd) {
-    var task = S().find('Tasks', upd.task_id);
+    var task = Q.Repo.tasks.find(upd.task_id);
     var approved = upd.review_status === 'approved';
     Q.Audit.log(ctx, approved ? 'progress.approve' : 'progress.reject', 'TaskUpdate', upd.update_id, 'evt-review-' + upd.update_id);
     Q.Notify.send(upd.submitted_by_user_id, approved ? 'progress_approved' : 'progress_rejected', upd.update_id,
       approved ? 'Cập nhật tiến độ của bạn cho ' + task.task_code + ' đã được duyệt.'
         : 'Cập nhật tiến độ cho ' + task.task_code + ' bị từ chối. Vui lòng kiểm tra lý do trong ứng dụng và gửi lại.');
 
-    if (approved && upd.progress_pct === 100 && task.status !== 'completed') {
+    if (D.Progress.completesTask(upd, task)) {
       var now = U.isoNow();
-      S().update('Tasks', task.task_id, { status: 'completed', completed_at: now, updated_at: now });
+      Q.Repo.tasks.update(task.task_id, { status: 'completed', completed_at: now, updated_at: now });
       Q.Audit.log(ctx, 'task.auto_complete', 'Task', task.task_id, 'evt-autocomplete-' + task.task_id);
       var ids = {};
-      Q.Core.activeAssignments(task.task_id).forEach(function (a) { ids[a.user_id] = true; });
+      Q.Assignments.activeOf(task.task_id).forEach(function (a) { ids[a.user_id] = true; });
       ids[upd.submitted_by_user_id] = true;
       delete ids[ctx.user.user_id];
       Object.keys(ids).forEach(function (uid) {
@@ -1111,40 +1337,38 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
   }
   G._ensureReviewEffects = ensureReviewEffects;
 
+  /** Duyệt hoặc từ chối. Gửi lại cùng quyết định bởi cùng người duyệt được coi là thử lại an toàn. */
   G.review = function (ctx, p) {
     P.require(ctx, 'progress.review');
     var decision = U.oneOf(p.decision, ['approve', 'reject'], { field: 'decision', label: 'Quyết định', required: true });
     var comment = U.str(p.comment, { field: 'comment', label: 'Lý do', max: L.comment, required: decision === 'reject', min: decision === 'reject' ? 3 : 0 });
-    var upd = S().find('TaskUpdates', p.updateId);
+    var upd = Q.Repo.updates.find(p.updateId);
     if (!upd) U.fail('NOT_FOUND', 'Không tìm thấy báo cáo tiến độ.');
-    if (upd.submitted_by_user_id === ctx.user.user_id) {
-      U.fail('FORBIDDEN', 'Không thể tự duyệt báo cáo do chính mình gửi.', { reason: 'SELF_REVIEW' });
-    }
-    var want = decision === 'approve' ? 'approved' : 'rejected';
+    D.Progress.assertNotSelfReview(upd, ctx.user.user_id);
+    var want = D.Progress.statusOf(decision);
 
     if (upd.review_status !== 'pending') {
-      // Gửi lại cùng quyết định bởi cùng người duyệt: coi như retry, vá nốt hệ quả nếu còn thiếu.
       if (upd.review_status === want && upd.reviewed_by_user_id === ctx.user.user_id) {
         ensureReviewEffects(ctx, upd);
-        return { update: Q.DTO.updates([S().find('TaskUpdates', upd.update_id)])[0], task: Q.DTO.tasks(ctx, [S().find('Tasks', upd.task_id)])[0], replayed: true };
+        return { update: Q.Presenters.updates([Q.Repo.updates.find(upd.update_id)])[0], task: Q.Presenters.tasks(ctx, [Q.Repo.tasks.find(upd.task_id)])[0], replayed: true };
       }
       U.fail('CONFLICT', 'Báo cáo này đã được xử lý trước đó.');
     }
-    var done = S().update('TaskUpdates', upd.update_id, {
+    var done = Q.Repo.updates.update(upd.update_id, {
       review_status: want, reviewed_by_user_id: ctx.user.user_id, reviewed_by_email_snapshot: ctx.user.email,
       reviewed_at: U.isoNow(), review_comment: comment
     });
     ensureReviewEffects(ctx, done);
-    return { update: Q.DTO.updates([S().find('TaskUpdates', upd.update_id)])[0], task: Q.DTO.tasks(ctx, [S().find('Tasks', upd.task_id)])[0], replayed: false };
+    return { update: Q.Presenters.updates([Q.Repo.updates.find(upd.update_id)])[0], task: Q.Presenters.tasks(ctx, [Q.Repo.tasks.find(upd.task_id)])[0], replayed: false };
   };
 
   /** Hàng đợi duyệt: báo cáo đang chờ, cũ nhất trước. */
   G.pending = function (ctx, p) {
     P.require(ctx, 'progress.review');
-    var list = S().where('TaskUpdates', function (u) { return u.review_status === 'pending'; });
+    var list = Q.Repo.updates.pending();
     var tasks = {};
-    S().all('Tasks').forEach(function (t) { tasks[t.task_id] = t; });
-    var items = Q.DTO.updates(U.sortBy(list, function (u) { return u.submitted_at + u.update_id; }, 'asc')).map(function (d) {
+    Q.Repo.tasks.all().forEach(function (t) { tasks[t.task_id] = t; });
+    var items = Q.Presenters.updates(U.sortBy(list, function (u) { return u.submitted_at + u.update_id; }, 'asc')).map(function (d) {
       var t = tasks[d.taskId];
       d.task = t ? { taskId: t.task_id, taskCode: t.task_code, title: t.title, dueAt: t.due_at } : null;
       d.ownSubmission = d.submittedBy.userId === ctx.user.user_id;
@@ -1156,14 +1380,14 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
 
 /* ---- 42_Svc_Customers.js ---- */
 /**
- * Khách hàng (R9, R17). Không có dư nợ / nhóm nợ / thông tin tín dụng (R9, R13).
+ * Use case: khách hàng (R9, R17). Không có dư nợ, nhóm nợ hay thông tin tín dụng (R9, R13).
  * Trường "Người đại diện công ty" chỉ có ở khách hàng doanh nghiệp (R17). Xóa = lưu trữ (xóa mềm).
  */
 (function (Q) {
   'use strict';
-  var U = Q.Util, P = Q.Policy, L = Q.Config.LIMITS, E = Q.Enums;
-  function S() { return Q.Store; }
+  var U = Q.Util, P = Q.Policy, L = Q.Config.LIMITS, E = Q.Enums, D = Q.Domain;
 
+  /** Kiểm tra và chuẩn hóa các trường khách hàng từ tham số. partial=true: chỉ các trường có mặt trong p. */
   function fields(p, partial) {
     var out = {};
     function has(k) { return p[k] !== undefined; }
@@ -1190,7 +1414,7 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     }
     rows = U.sortBy(rows, function (c) { return U.norm(c.name); }, 'asc');
     var page = U.paginate(rows, p);
-    page.items = page.items.map(Q.DTO.customer);
+    page.items = page.items.map(Q.Presenters.customer);
     return page;
   };
 
@@ -1198,83 +1422,78 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     P.require(ctx, 'customer.view');
     var c = P.customerOrFail(ctx, p && p.customerId);
     var tasks = P.visibleTasks(ctx).filter(function (t) { return t.customer_id === c.customer_id && !t.archived_at; });
-    return { customer: Q.DTO.customer(c), tasks: Q.DTO.tasks(ctx, tasks) };
+    return { customer: Q.Presenters.customer(c), tasks: Q.Presenters.tasks(ctx, tasks) };
   };
 
   C.create = function (ctx, p, meta) {
     P.require(ctx, 'customer.maintain');
     var key = 'evt-customer.create-' + meta.requestId;
     var dup = Q.Audit.find(key);
-    if (dup) return { customer: Q.DTO.customer(S().find('Customers', dup.entity_id)), replayed: true };
+    if (dup) return { customer: Q.Presenters.customer(Q.Repo.customers.find(dup.entity_id)), replayed: true };
 
     var f = fields(p, false);
-    if (f.type === 'personal' && f.company_representative) U.invalid('companyRepresentative', 'Chỉ khách hàng doanh nghiệp mới có người đại diện công ty.');
-    var id = S().nextId('Customers'), code;
+    D.Customer.assertRepresentativeAllowed(f.type, f.company_representative);
+    var id = Q.Repo.customers.nextId(), code;
     if (p.customerCode) {
       code = U.str(p.customerCode, { field: 'customerCode', label: 'Mã khách hàng', max: 30, pattern: /^[A-Za-z0-9_-]{3,30}$/ });
     } else {
-      code = 'KH-' + U.pad(parseInt(id.split('-')[1], 10), 4);
+      code = D.Codes.customerCodeFor(id);
     }
-    if (S().findBy('Customers', 'customer_code', code).length) U.invalid('customerCode', 'Mã khách hàng đã tồn tại.');
+    if (Q.Repo.customers.byCode(code).length) U.invalid('customerCode', 'Mã khách hàng đã tồn tại.');
     var now = U.isoNow();
-    var c = S().insert('Customers', {
+    var c = Q.Repo.customers.insert({
       customer_id: id, customer_code: code, name: f.name, type: f.type, phone: f.phone, status: f.status,
       created_at: now, updated_at: now, company_representative: f.company_representative || '', archived_at: ''
     });
     Q.Audit.log(ctx, 'customer.create', 'Customer', c.customer_id, key);
-    return { customer: Q.DTO.customer(c), replayed: false };
+    return { customer: Q.Presenters.customer(c), replayed: false };
   };
 
   C.update = function (ctx, p, meta) {
     P.require(ctx, 'customer.maintain');
-    var c = S().find('Customers', p.customerId);
+    var c = Q.Repo.customers.find(p.customerId);
     if (!c) U.fail('NOT_FOUND', 'Không tìm thấy khách hàng.');
     if (c.archived_at) U.fail('CONFLICT', 'Khách hàng đã được lưu trữ.');
     var f = fields(p, true);
     var type = f.type || c.type;
     if (type === 'personal') {
-      if (f.company_representative) U.invalid('companyRepresentative', 'Chỉ khách hàng doanh nghiệp mới có người đại diện công ty.');
+      D.Customer.assertRepresentativeAllowed(type, f.company_representative);
       if (f.type === 'personal') f.company_representative = '';   // đổi sang cá nhân thì xóa trường đại diện
     }
     if (!Object.keys(f).length) U.invalid(null, 'Không có thay đổi nào để lưu.');
     f.updated_at = U.isoNow();
-    var up = S().update('Customers', c.customer_id, f);
+    var up = Q.Repo.customers.update(c.customer_id, f);
     Q.Audit.log(ctx, 'customer.update', 'Customer', c.customer_id, 'evt-customer.update-' + meta.requestId);
-    return { customer: Q.DTO.customer(up) };
+    return { customer: Q.Presenters.customer(up) };
   };
 
+  /** Lưu trữ khách hàng: không cho lưu trữ khi còn công việc chưa hoàn thành. */
   C.archive = function (ctx, p, meta) {
     P.require(ctx, 'customer.delete');
-    var c = S().find('Customers', p.customerId);
+    var c = Q.Repo.customers.find(p.customerId);
     if (!c) U.fail('NOT_FOUND', 'Không tìm thấy khách hàng.');
-    var open = S().findBy('Tasks', 'customer_id', c.customer_id).filter(function (t) { return t.status !== 'completed' && !t.archived_at; });
+    var open = Q.Repo.tasks.byCustomer(c.customer_id).filter(function (t) { return D.Task.isOpen(t); });
     var archive = p.archived === undefined ? true : U.bool(p.archived);
     if (archive && open.length) U.fail('CONFLICT', 'Khách hàng còn ' + open.length + ' công việc chưa hoàn thành, không thể lưu trữ.');
-    if (archive === !!c.archived_at) return { customer: Q.DTO.customer(c) };
-    var up = S().update('Customers', c.customer_id, { archived_at: archive ? U.isoNow() : '', updated_at: U.isoNow() });
+    if (archive === !!c.archived_at) return { customer: Q.Presenters.customer(c) };
+    var up = Q.Repo.customers.update(c.customer_id, { archived_at: archive ? U.isoNow() : '', updated_at: U.isoNow() });
     Q.Audit.log(ctx, archive ? 'customer.archive' : 'customer.restore', 'Customer', c.customer_id, 'evt-customer.archive-' + meta.requestId);
-    return { customer: Q.DTO.customer(up) };
+    return { customer: Q.Presenters.customer(up) };
   };
 })(QLCV);
 
-/* ---- 43_Svc_Admin.js ---- */
+/* ---- 43_Svc_Users.js ---- */
 /**
- * Quản trị (R12, R16): người dùng, nhật ký kiểm toán, kiểm tra toàn vẹn, sao lưu.
- * Xóa người dùng KHÔNG được phép (giữ lịch sử); chỉ vô hiệu hóa. Restore bị khóa cho tới khi qua kiểm thử U7.
+ * Use case: quản lý người dùng (R12, R16). Xóa người dùng KHÔNG được phép (giữ lịch sử); chỉ vô hiệu hóa.
+ * Chống tự khóa và luôn giữ ít nhất một Admin hoạt động nằm ở Q.Domain.User.
  */
 (function (Q) {
   'use strict';
-  var U = Q.Util, P = Q.Policy, L = Q.Config.LIMITS, E = Q.Enums;
-  function S() { return Q.Store; }
+  var U = Q.Util, P = Q.Policy, L = Q.Config.LIMITS, E = Q.Enums, D = Q.Domain;
 
-  function roleMap() { var m = {}; S().all('Roles').forEach(function (r) { m[r.role_id] = r; }); return m; }
-  function roleIdByCode(code) {
-    var r = S().findBy('Roles', 'code', code)[0];
-    return r ? r.role_id : null;
-  }
+  function roleMap() { var m = {}; Q.Repo.roles.all().forEach(function (r) { m[r.role_id] = r; }); return m; }
   function activeAdmins() {
-    var id = roleIdByCode('Admin');
-    return S().all('Users').filter(function (u) { return u.role_id === id && u.status === 'active'; });
+    return Q.Repo.users.byRole(Q.Repo.roles.idByCode('Admin')).filter(function (u) { return u.status === 'active'; });
   }
 
   /** Đếm người dùng hoạt động theo vai trò trên TOÀN BỘ bảng (không phụ thuộc trang đang xem). */
@@ -1289,211 +1508,100 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     return c;
   }
 
-  var A = Q.AdminService = {};
+  var Users = Q.UserService = {};
 
-  /* ---------- Người dùng ---------- */
-  A.userList = function (ctx, p) {
+  Users.list = function (ctx, p) {
     P.require(ctx, 'user.manage');
     p = p || {};
-    var roles = roleMap(), rows = S().all('Users');
+    var roles = roleMap(), rows = Q.Repo.users.all();
     if (p.status) rows = rows.filter(function (u) { return u.status === p.status; });
     if (p.roleCode) rows = rows.filter(function (u) { return roles[u.role_id] && roles[u.role_id].code === p.roleCode; });
     if (p.q) { var q = U.norm(String(p.q).slice(0, 100)); rows = rows.filter(function (u) { return U.norm(u.full_name + ' ' + u.email + ' ' + u.employee_code).indexOf(q) >= 0; }); }
     rows = U.sortBy(rows, function (u) { return u.user_id; }, 'asc');
     var page = U.paginate(rows, p);
-    page.items = page.items.map(function (u) { return Q.DTO.user(u, roles); });
+    page.items = page.items.map(function (u) { return Q.Presenters.user(u, roles); });
     page.roles = Object.keys(roles).map(function (k) { return { roleId: roles[k].role_id, code: roles[k].code, name: roles[k].name }; });
-    page.counts = userCounts(S().all('Users'), roles);
+    page.counts = userCounts(Q.Repo.users.all(), roles);
     return page;
   };
 
   /** Danh sách chọn người thực hiện: người có quyền giao việc thấy mọi CBTD; CBTD chỉ thấy chính mình (R6). */
-  A.userOptions = function (ctx) {
-    var cbtdId = roleIdByCode('CBTD');
+  Users.options = function (ctx) {
+    var cbtdId = Q.Repo.roles.idByCode('CBTD');
     var list = P.isScoped(ctx)
       ? [ctx.user]
-      : S().all('Users').filter(function (u) { return u.role_id === cbtdId && u.status === 'active'; });
+      : Q.Repo.users.byRole(cbtdId).filter(function (u) { return u.status === 'active'; });
     if (!P.isScoped(ctx) && !(P.has(ctx, 'task.create') || P.has(ctx, 'task.transfer') || P.has(ctx, 'task.update'))) {
       U.fail('FORBIDDEN', 'Bạn không có quyền thực hiện thao tác này.');
     }
     return { items: list.map(function (u) { return { userId: u.user_id, fullName: u.full_name, orgUnit: u.org_unit, employeeCode: u.employee_code }; }) };
   };
 
-  A.userCreate = function (ctx, p, meta) {
+  Users.create = function (ctx, p, meta) {
     P.require(ctx, 'user.manage');
     var key = 'evt-user.create-' + meta.requestId;
     var dup = Q.Audit.find(key);
-    if (dup) return { user: Q.DTO.user(S().find('Users', dup.entity_id), roleMap()), replayed: true };
+    if (dup) return { user: Q.Presenters.user(Q.Repo.users.find(dup.entity_id), roleMap()), replayed: true };
 
     var email = U.email(p.email, { field: 'email' });
     var code = U.str(p.employeeCode, { field: 'employeeCode', label: 'Mã cán bộ', required: true, max: 30, pattern: /^[A-Za-z0-9_-]+$/ });
     var name = U.str(p.fullName, { field: 'fullName', label: 'Họ tên', required: true, max: L.name });
     var org = U.str(p.orgUnit, { field: 'orgUnit', label: 'Đơn vị', required: true, max: L.org });
-    var role = S().find('Roles', p.roleId);
+    var role = Q.Repo.roles.find(p.roleId);
     if (!role) U.invalid('roleId', 'Vai trò không hợp lệ.');
-    if (S().findBy('Users', 'email', email).length) U.invalid('email', 'Email đã tồn tại.');
-    if (S().findBy('Users', 'employee_code', code).length) U.invalid('employeeCode', 'Mã cán bộ đã tồn tại.');
+    if (Q.Repo.users.findBy('email', email).length) U.invalid('email', 'Email đã tồn tại.');
+    if (Q.Repo.users.byEmployeeCode(code).length) U.invalid('employeeCode', 'Mã cán bộ đã tồn tại.');
     var now = U.isoNow();
-    var u = S().insert('Users', {
-      user_id: S().nextId('Users'), email: email, employee_code: code, full_name: name, role_id: role.role_id,
+    var u = Q.Repo.users.insert({
+      user_id: Q.Repo.users.nextId(), email: email, employee_code: code, full_name: name, role_id: role.role_id,
       org_unit: org, status: 'active', created_at: now, updated_at: now
     });
     Q.Audit.log(ctx, 'user.create', 'User', u.user_id, key);
-    return { user: Q.DTO.user(u, roleMap()), replayed: false };
+    return { user: Q.Presenters.user(u, roleMap()), replayed: false };
   };
 
-  A.userUpdate = function (ctx, p, meta) {
+  Users.update = function (ctx, p, meta) {
     P.require(ctx, 'user.manage');
-    var u = S().find('Users', p.userId);
+    var u = Q.Repo.users.find(p.userId);
     if (!u) U.fail('NOT_FOUND', 'Không tìm thấy người dùng.');
     var patch = {};
     if (p.fullName !== undefined) patch.full_name = U.str(p.fullName, { field: 'fullName', label: 'Họ tên', required: true, max: L.name });
     if (p.orgUnit !== undefined) patch.org_unit = U.str(p.orgUnit, { field: 'orgUnit', label: 'Đơn vị', required: true, max: L.org });
     if (p.employeeCode !== undefined) {
       patch.employee_code = U.str(p.employeeCode, { field: 'employeeCode', label: 'Mã cán bộ', required: true, max: 30, pattern: /^[A-Za-z0-9_-]+$/ });
-      var same = S().findBy('Users', 'employee_code', patch.employee_code).filter(function (x) { return x.user_id !== u.user_id; });
+      var same = Q.Repo.users.findBy('employee_code', patch.employee_code).filter(function (x) { return x.user_id !== u.user_id; });
       if (same.length) U.invalid('employeeCode', 'Mã cán bộ đã tồn tại.');
     }
-    if (p.roleId !== undefined) { if (!S().find('Roles', p.roleId)) U.invalid('roleId', 'Vai trò không hợp lệ.'); patch.role_id = p.roleId; }
+    if (p.roleId !== undefined) { if (!Q.Repo.roles.find(p.roleId)) U.invalid('roleId', 'Vai trò không hợp lệ.'); patch.role_id = p.roleId; }
     if (p.status !== undefined) patch.status = U.oneOf(p.status, E.userStatus, { field: 'status', label: 'Trạng thái', required: true });
     if (!Object.keys(patch).length) U.invalid(null, 'Không có thay đổi nào để lưu.');
 
-    // Chống tự khóa: không hạ quyền/vô hiệu hóa chính mình, không bỏ Admin cuối cùng.
-    var adminId = roleIdByCode('Admin');
-    var losesAdmin = (patch.role_id && patch.role_id !== adminId && u.role_id === adminId) || (patch.status === 'inactive' && u.role_id === adminId);
-    if (losesAdmin) {
-      if (u.user_id === ctx.user.user_id) U.fail('CONFLICT', 'Không thể tự hạ quyền hoặc vô hiệu hóa tài khoản Admin của chính mình.');
-      if (activeAdmins().length <= 1) U.fail('CONFLICT', 'Hệ thống phải còn ít nhất một Admin đang hoạt động.');
-    }
-    if (u.user_id === ctx.user.user_id && patch.status === 'inactive') U.fail('CONFLICT', 'Không thể tự vô hiệu hóa tài khoản của mình.');
+    D.User.assertKeepsAnAdmin(ctx.user.user_id, u, Q.Repo.roles.idByCode('Admin'), patch, function () { return activeAdmins().length; });
+    D.User.assertNotSelfDeactivate(ctx.user.user_id, u.user_id, patch);
 
     patch.updated_at = U.isoNow();
-    var up = S().update('Users', u.user_id, patch);
+    var up = Q.Repo.users.update(u.user_id, patch);
     Q.Audit.log(ctx, 'user.update', 'User', u.user_id, 'evt-user.update-' + meta.requestId);
-    return { user: Q.DTO.user(up, roleMap()) };
-  };
-
-  /* ---------- Nhật ký kiểm toán ---------- */
-  A.auditList = function (ctx, p) {
-    P.require(ctx, 'audit.view');
-    p = p || {};
-    var rows = S().all('AuditLogs');
-    if (p.action) rows = rows.filter(function (a) { return a.action === p.action; });
-    if (p.actorUserId) rows = rows.filter(function (a) { return a.actor_user_id === p.actorUserId; });
-    if (p.entityId) rows = rows.filter(function (a) { return a.entity_id === p.entityId; });
-    if (p.from) rows = rows.filter(function (a) { return a.created_at.slice(0, 10) >= p.from; });
-    if (p.to) rows = rows.filter(function (a) { return a.created_at.slice(0, 10) <= p.to; });
-    rows = U.sortBy(rows, function (a) { return a.created_at + a.audit_id; }, 'desc');
-    var page = U.paginate(rows, p);
-    page.items = page.items.map(function (a) {
-      return { auditId: a.audit_id, actorUserId: a.actor_user_id, actorEmail: a.actor_email_snapshot, action: a.action,
-        entityType: a.entity_type, entityId: a.entity_id, createdAt: a.created_at };
-    });
-    return page;
-  };
-
-  /* ---------- Kiểm tra toàn vẹn (cùng bộ quy tắc với tools/appsheet/check-integrity.js) ---------- */
-  A.integrity = function (ctx, p) {
-    P.require(ctx, 'user.manage');
-    var issues = [];
-    function bad(t, id, msg) { issues.push({ table: t, id: id, message: msg }); }
-
-    Q.Schema.names.forEach(function (t) {
-      var def = Q.Schema.tables[t];
-      if (def.pk) {
-        var seen = {};
-        S().all(t).forEach(function (r) { if (seen[r[def.pk]]) bad(t, r[def.pk], 'Khóa chính trùng'); seen[r[def.pk]] = 1; });
-      }
-    });
-    function uniq(t, col) {
-      var seen = {};
-      S().all(t).forEach(function (r) { var v = String(r[col]); if (seen[v]) bad(t, r[Q.Schema.tables[t].pk], col + ' trùng: ' + v); seen[v] = 1; });
-    }
-    uniq('Users', 'email'); uniq('Users', 'employee_code'); uniq('Customers', 'customer_code'); uniq('Tasks', 'task_code');
-    uniq('Notifications', 'request_or_event_key'); uniq('AuditLogs', 'request_or_event_key');
-
-    function ref(t, col, pt) {
-      S().all(t).forEach(function (r) {
-        var v = r[col];
-        if (v && !S().find(pt, v)) bad(t, r[Q.Schema.tables[t].pk] || '-', col + ' trỏ tới ' + pt + ' không tồn tại: ' + v);
-      });
-    }
-    ref('Users', 'role_id', 'Roles'); ref('Tasks', 'customer_id', 'Customers'); ref('Tasks', 'created_by_user_id', 'Users');
-    ref('TaskAssignees', 'task_id', 'Tasks'); ref('TaskAssignees', 'user_id', 'Users');
-    ref('TaskUpdates', 'task_id', 'Tasks'); ref('TaskUpdates', 'submitted_by_user_id', 'Users'); ref('TaskUpdates', 'reviewed_by_user_id', 'Users');
-    ref('Notifications', 'recipient_user_id', 'Users'); ref('AuditLogs', 'actor_user_id', 'Users');
-
-    S().all('Tasks').forEach(function (t) {
-      var act = Q.Core.activeAssignments(t.task_id);
-      var prim = act.filter(function (a) { return a.assignment_role === 'primary'; });
-      var col = act.filter(function (a) { return a.assignment_role === 'collaborator'; });
-      if (prim.length !== 1) bad('Tasks', t.task_id, 'Phải có đúng 1 người phụ trách chính đang hoạt động (hiện ' + prim.length + ')');
-      if (col.length > 1) bad('Tasks', t.task_id, 'Có hơn 1 người phối hợp đang hoạt động');
-      if (prim[0] && col[0] && prim[0].user_id === col[0].user_id) bad('Tasks', t.task_id, 'Người phụ trách chính trùng người phối hợp');
-      if (t.status === 'completed' && !t.completed_at) bad('Tasks', t.task_id, 'Đã hoàn thành nhưng thiếu completed_at');
-      if (t.status !== 'completed' && t.completed_at) bad('Tasks', t.task_id, 'Chưa hoàn thành nhưng có completed_at');
-    });
-    S().all('TaskUpdates').forEach(function (u) {
-      if (u.progress_pct === null || u.progress_pct < 0 || u.progress_pct > 100) bad('TaskUpdates', u.update_id, 'Tiến độ ngoài 0–100');
-      if (u.review_status !== 'pending' && (!u.reviewed_by_user_id || !u.reviewed_at)) bad('TaskUpdates', u.update_id, 'Đã duyệt/từ chối nhưng thiếu người duyệt hoặc thời điểm');
-      if (u.review_status === 'pending' && u.reviewed_by_user_id) bad('TaskUpdates', u.update_id, 'Đang chờ duyệt nhưng đã có người duyệt');
-      if (u.review_status === 'rejected' && !u.review_comment) bad('TaskUpdates', u.update_id, 'Từ chối nhưng thiếu lý do');
-      var t = S().find('Tasks', u.task_id);
-      if (t && u.review_status === 'approved' && u.progress_pct === 100 && t.status !== 'completed') {
-        bad('TaskUpdates', u.update_id, 'Đã duyệt 100% nhưng công việc chưa hoàn thành (có thể sửa bằng admin.reconcile)');
-      }
-    });
-    return { ok: issues.length === 0, issueCount: issues.length, issues: issues.slice(0, 200), checkedAt: U.isoNow() };
-  };
-
-  /** Vá các hệ quả duyệt bị đứt giữa chừng (an toàn, idempotent). */
-  A.reconcile = function (ctx) {
-    P.require(ctx, 'user.manage');
-    var fixed = [];
-    S().all('TaskUpdates').forEach(function (u) {
-      var t = S().find('Tasks', u.task_id);
-      if (t && u.review_status === 'approved' && u.progress_pct === 100 && t.status !== 'completed') {
-        Q.ProgressService._ensureReviewEffects(ctx, u);
-        fixed.push(u.update_id);
-      }
-    });
-    if (fixed.length) Q.Audit.log(ctx, 'admin.reconcile', 'System', 'reconcile', 'evt-reconcile-' + Q.Env.uuid());
-    return { fixed: fixed };
-  };
-
-  /* ---------- Sao lưu (R16) ---------- */
-  A.backup = function (ctx) {
-    P.require(ctx, 'user.manage');
-    if (Q.Env.runtime !== 'gas') return { enabled: false, message: 'Sao lưu chỉ khả dụng trên môi trường Google Workspace.' };
-    var res = Q.Backup.run('manual');
-    Q.Audit.log(ctx, 'admin.backup', 'System', res.fileId, 'evt-backup-' + Q.Env.uuid());
-    return res;
-  };
-
-  A.restore = function (ctx) {
-    P.require(ctx, 'user.manage');
-    U.fail('NOT_ENABLED', 'Khôi phục dữ liệu bị khóa trên môi trường sản xuất cho tới khi hoàn tất kiểm thử U7. Hãy thực hiện theo operations-runbook.');
+    return { user: Q.Presenters.user(up, roleMap()) };
   };
 })(QLCV);
 
 /* ---- 44_Svc_Dashboard.js ---- */
 /**
- * Bảng điều khiển (R10, R15) và thông báo trong ứng dụng (R11).
+ * Use case: bảng điều khiển (R10, R15) và thông tin phiên làm việc (auth.me).
  * Mọi số liệu tính động trên đúng tập bản ghi người dùng được phép xem (R3) – không có bảng tổng hợp tĩnh.
- * Không có số liệu tín dụng (dư nợ, nhóm nợ).
+ * Không có số liệu tín dụng (dư nợ, nhóm nợ). Thông báo nằm ở 45_Svc_Notifications.js.
  */
 (function (Q) {
   'use strict';
-  var U = Q.Util, P = Q.Policy;
-  function S() { return Q.Store; }
+  var U = Q.Util, P = Q.Policy, D = Q.Domain;
 
-  function unread(ctx) {
-    return S().findBy('Notifications', 'recipient_user_id', ctx.user.user_id).filter(function (n) { return !n.read_at; }).length;
-  }
+  function unreadCount(ctx) { return Q.Repo.notifications.unreadFor(ctx.user.user_id).length; }
 
-  var D = Q.DashboardService = {};
+  var Dash = Q.DashboardService = {};
 
-  D.me = function (ctx) {
+  /** Thông tin phiên: người dùng, vai trò, quyền, màn hình bắt đầu theo vai trò (R14). */
+  Dash.me = function (ctx) {
     var start = ctx.role === 'CBTD' ? 'tasks' : ctx.role === 'KSV' ? 'reviews' : ctx.role === 'Admin' ? 'admin' : 'dashboard';
     return {
       user: { userId: ctx.user.user_id, email: ctx.user.email, fullName: ctx.user.full_name,
@@ -1502,12 +1610,13 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
       permissions: Object.keys(ctx.perms).sort(),
       isDirector: ctx.isDirector,
       startView: start,
-      unreadNotifications: unread(ctx),
+      unreadNotifications: unreadCount(ctx),
       today: U.today(), serverTime: U.isoNow(), version: Q.Config.VERSION
     };
   };
 
-  D.get = function (ctx) {
+  /** Số liệu chung trên phạm vi được xem. */
+  Dash.get = function (ctx) {
     P.require(ctx, 'dashboard.view');
     var today = U.today();
     var tasks = P.visibleTasks(ctx).filter(function (t) { return !t.archived_at; });
@@ -1528,14 +1637,14 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     var visible = {};
     tasks.forEach(function (t) { visible[t.task_id] = true; });
     if (P.has(ctx, 'progress.review')) {
-      var pend = S().where('TaskUpdates', function (u) { return u.review_status === 'pending'; });
-      kpis.pendingReviews = pend.length;
+      // Số chờ duyệt đếm trên toàn bộ báo cáo đang chờ (giữ nguyên hành vi trước khi tái cấu trúc).
+      kpis.pendingReviews = Q.Repo.updates.pending().length;
     }
     if (!P.isScoped(ctx)) {
       var rows = {};
-      S().all('TaskAssignees').forEach(function (a) {
+      Q.Repo.assignments.all().forEach(function (a) {
         if (!a.active || a.assignment_role !== 'primary' || !visible[a.task_id]) return;
-        var t = S().find('Tasks', a.task_id), u = S().find('Users', a.user_id);
+        var t = Q.Repo.tasks.find(a.task_id), u = Q.Repo.users.find(a.user_id);
         if (t.status === 'completed') return;
         var r = rows[a.user_id] = rows[a.user_id] || { userId: a.user_id, name: u ? u.full_name : a.user_id, open: 0, overdue: 0 };
         r.open++; if (t.due_at < today) r.overdue++;
@@ -1543,19 +1652,19 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
       out.byAssignee = Object.keys(rows).map(function (k) { return rows[k]; }).sort(function (a, b) { return b.open - a.open; });
     }
     var soon = U.sortBy(open, function (t) { return t.due_at + t.task_code; }, 'asc').slice(0, 5);
-    out.upcoming = Q.DTO.tasks(ctx, soon);
+    out.upcoming = Q.Presenters.tasks(ctx, soon);
     return out;
   };
 
   /** R15 – công việc ưu tiên cho Giám đốc: (ưu tiên cao HOẶC quá hạn) VÀ chưa hoàn thành. */
-  D.director = function (ctx) {
+  Dash.director = function (ctx) {
     P.require(ctx, 'dashboard.view_director');
     var today = U.today();
     var rows = P.visibleTasks(ctx).filter(function (t) {
-      return Q.Rules.isOpen(t) && (t.priority === 'high' || Q.Rules.isLate(t, today));
+      return D.Task.isOpen(t) && (t.priority === 'high' || D.Task.isLate(t, today));
     });
     rows = U.sortBy(rows, function (t) { return (t.due_at < today ? '0' : '1') + t.due_at + t.task_code; }, 'asc');
-    var dtos = Q.DTO.tasks(ctx, rows);
+    var dtos = Q.Presenters.tasks(ctx, rows);
     return {
       today: today, total: dtos.length,
       highOpen: dtos.filter(function (d) { return d.priority === 'high'; }).length,
@@ -1568,20 +1677,30 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
    * Tổng quan trong MỘT request: số liệu chung, và phần của Giám đốc nếu người dùng có quyền.
    * Thay cho hai lời gọi dashboard.get + dashboard.director (mỗi lời gọi phải xác thực và nạp lại dữ liệu).
    */
-  D.overview = function (ctx) {
+  Dash.overview = function (ctx) {
     return {
-      dashboard: D.get(ctx),
-      director: P.has(ctx, 'dashboard.view_director') ? D.director(ctx) : null
+      dashboard: Dash.get(ctx),
+      director: P.has(ctx, 'dashboard.view_director') ? Dash.director(ctx) : null
     };
   };
+})(QLCV);
 
-  /* ---------- Thông báo ---------- */
+/* ---- 45_Svc_Notifications.js ---- */
+/**
+ * Use case: thông báo trong ứng dụng (R11). Mỗi người chỉ thấy và đánh dấu được thông báo gửi đến chính mình.
+ */
+(function (Q) {
+  'use strict';
+  var U = Q.Util, P = Q.Policy;
+
+  function unreadCount(ctx) { return Q.Repo.notifications.unreadFor(ctx.user.user_id).length; }
+
   var N = Q.NotificationService = {};
 
   N.list = function (ctx, p) {
     P.require(ctx, 'notification.view');
     p = p || {};
-    var rows = S().findBy('Notifications', 'recipient_user_id', ctx.user.user_id);
+    var rows = Q.Repo.notifications.forRecipient(ctx.user.user_id);
     if (U.bool(p.unreadOnly)) rows = rows.filter(function (r) { return !r.read_at; });
     rows = U.sortBy(rows, function (r) { return r.created_at + r.notification_id; }, 'desc');
     var page = U.paginate(rows, p);
@@ -1589,38 +1708,255 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
       return { notificationId: r.notification_id, eventType: r.event_type, sourceRecordId: r.source_record_id,
         message: r.message, createdAt: r.created_at, readAt: r.read_at || null };
     });
-    page.unread = unread(ctx);
+    page.unread = unreadCount(ctx);
     return page;
   };
 
-  N.count = function (ctx) { P.require(ctx, 'notification.view'); return { unread: unread(ctx) }; };
+  N.count = function (ctx) { P.require(ctx, 'notification.view'); return { unread: unreadCount(ctx) }; };
 
   N.markRead = function (ctx, p) {
     P.require(ctx, 'notification.view');
     var ids = Array.isArray(p.ids) ? p.ids.slice(0, 100) : [];
     var now = U.isoNow(), n = 0;
     ids.forEach(function (id) {
-      var r = S().find('Notifications', id);
+      var r = Q.Repo.notifications.find(id);
       // Chỉ chủ nhận mới đánh dấu được; id của người khác bị bỏ qua, không báo lỗi để không lộ sự tồn tại.
-      if (r && r.recipient_user_id === ctx.user.user_id && !r.read_at) { S().update('Notifications', id, { read_at: now }); n++; }
+      if (r && r.recipient_user_id === ctx.user.user_id && !r.read_at) { Q.Repo.notifications.update(id, { read_at: now }); n++; }
     });
-    return { updated: n, unread: unread(ctx) };
+    return { updated: n, unread: unreadCount(ctx) };
   };
 
   N.markAllRead = function (ctx) {
     P.require(ctx, 'notification.view');
     var now = U.isoNow(), n = 0;
-    S().findBy('Notifications', 'recipient_user_id', ctx.user.user_id).forEach(function (r) {
-      if (!r.read_at) { S().update('Notifications', r.notification_id, { read_at: now }); n++; }
+    Q.Repo.notifications.forRecipient(ctx.user.user_id).forEach(function (r) {
+      if (!r.read_at) { Q.Repo.notifications.update(r.notification_id, { read_at: now }); n++; }
     });
     return { updated: n, unread: 0 };
   };
 })(QLCV);
 
+/* ---- 46_Svc_Audit.js ---- */
+/** Use case: tra cứu nhật ký kiểm toán (R12). Chỉ đọc; không có thao tác sửa hay xóa. */
+(function (Q) {
+  'use strict';
+  var U = Q.Util, P = Q.Policy;
+
+  var Audit = Q.AuditService = {};
+
+  Audit.list = function (ctx, p) {
+    P.require(ctx, 'audit.view');
+    p = p || {};
+    var rows = Q.Repo.audit.all();
+    if (p.action) rows = rows.filter(function (a) { return a.action === p.action; });
+    if (p.actorUserId) rows = rows.filter(function (a) { return a.actor_user_id === p.actorUserId; });
+    if (p.entityId) rows = rows.filter(function (a) { return a.entity_id === p.entityId; });
+    if (p.from) rows = rows.filter(function (a) { return a.created_at.slice(0, 10) >= p.from; });
+    if (p.to) rows = rows.filter(function (a) { return a.created_at.slice(0, 10) <= p.to; });
+    rows = U.sortBy(rows, function (a) { return a.created_at + a.audit_id; }, 'desc');
+    var page = U.paginate(rows, p);
+    page.items = page.items.map(function (a) {
+      return { auditId: a.audit_id, actorUserId: a.actor_user_id, actorEmail: a.actor_email_snapshot, action: a.action,
+        entityType: a.entity_type, entityId: a.entity_id, createdAt: a.created_at };
+    });
+    return page;
+  };
+})(QLCV);
+
+/* ---- 47_Svc_Integrity.js ---- */
+/**
+ * Use case: kiểm tra toàn vẹn dữ liệu và vá hệ quả duyệt bị đứt (admin.reconcile).
+ * Cùng bộ quy tắc với tools/appsheet/check-integrity.js. Chỉ quản trị viên (user.manage) được dùng.
+ */
+(function (Q) {
+  'use strict';
+  var U = Q.Util, P = Q.Policy;
+
+  var Integrity = Q.IntegrityService = {};
+
+  /** Quét toàn bộ dữ liệu và trả về danh sách vấn đề (tối đa 200 dòng). */
+  Integrity.check = function (ctx) {
+    P.require(ctx, 'user.manage');
+    var issues = [];
+    function bad(t, id, msg) { issues.push({ table: t, id: id, message: msg }); }
+    function all(t) { return Q.Repo.of(t).all(); }
+    function find(t, id) { return Q.Repo.of(t).find(id); }
+
+    Q.Schema.names.forEach(function (t) {
+      var def = Q.Schema.tables[t];
+      if (def.pk) {
+        var seen = {};
+        all(t).forEach(function (r) { if (seen[r[def.pk]]) bad(t, r[def.pk], 'Khóa chính trùng'); seen[r[def.pk]] = 1; });
+      }
+    });
+    function uniq(t, col) {
+      var seen = {};
+      all(t).forEach(function (r) { var v = String(r[col]); if (seen[v]) bad(t, r[Q.Schema.tables[t].pk], col + ' trùng: ' + v); seen[v] = 1; });
+    }
+    uniq('Users', 'email'); uniq('Users', 'employee_code'); uniq('Customers', 'customer_code'); uniq('Tasks', 'task_code');
+    uniq('Notifications', 'request_or_event_key'); uniq('AuditLogs', 'request_or_event_key');
+
+    function ref(t, col, pt) {
+      all(t).forEach(function (r) {
+        var v = r[col];
+        if (v && !find(pt, v)) bad(t, r[Q.Schema.tables[t].pk] || '-', col + ' trỏ tới ' + pt + ' không tồn tại: ' + v);
+      });
+    }
+    ref('Users', 'role_id', 'Roles'); ref('Tasks', 'customer_id', 'Customers'); ref('Tasks', 'created_by_user_id', 'Users');
+    ref('TaskAssignees', 'task_id', 'Tasks'); ref('TaskAssignees', 'user_id', 'Users');
+    ref('TaskUpdates', 'task_id', 'Tasks'); ref('TaskUpdates', 'submitted_by_user_id', 'Users'); ref('TaskUpdates', 'reviewed_by_user_id', 'Users');
+    ref('Notifications', 'recipient_user_id', 'Users'); ref('AuditLogs', 'actor_user_id', 'Users');
+
+    all('Tasks').forEach(function (t) {
+      var act = Q.Assignments.activeOf(t.task_id);
+      var prim = act.filter(function (a) { return a.assignment_role === 'primary'; });
+      var col = act.filter(function (a) { return a.assignment_role === 'collaborator'; });
+      if (prim.length !== 1) bad('Tasks', t.task_id, 'Phải có đúng 1 người phụ trách chính đang hoạt động (hiện ' + prim.length + ')');
+      if (col.length > 1) bad('Tasks', t.task_id, 'Có hơn 1 người phối hợp đang hoạt động');
+      if (prim[0] && col[0] && prim[0].user_id === col[0].user_id) bad('Tasks', t.task_id, 'Người phụ trách chính trùng người phối hợp');
+      if (t.status === 'completed' && !t.completed_at) bad('Tasks', t.task_id, 'Đã hoàn thành nhưng thiếu completed_at');
+      if (t.status !== 'completed' && t.completed_at) bad('Tasks', t.task_id, 'Chưa hoàn thành nhưng có completed_at');
+    });
+    all('TaskUpdates').forEach(function (u) {
+      if (u.progress_pct === null || u.progress_pct < 0 || u.progress_pct > 100) bad('TaskUpdates', u.update_id, 'Tiến độ ngoài 0–100');
+      if (u.review_status !== 'pending' && (!u.reviewed_by_user_id || !u.reviewed_at)) bad('TaskUpdates', u.update_id, 'Đã duyệt/từ chối nhưng thiếu người duyệt hoặc thời điểm');
+      if (u.review_status === 'pending' && u.reviewed_by_user_id) bad('TaskUpdates', u.update_id, 'Đang chờ duyệt nhưng đã có người duyệt');
+      if (u.review_status === 'rejected' && !u.review_comment) bad('TaskUpdates', u.update_id, 'Từ chối nhưng thiếu lý do');
+      var t = find('Tasks', u.task_id);
+      if (t && u.review_status === 'approved' && u.progress_pct === 100 && t.status !== 'completed') {
+        bad('TaskUpdates', u.update_id, 'Đã duyệt 100% nhưng công việc chưa hoàn thành (có thể sửa bằng admin.reconcile)');
+      }
+    });
+    return { ok: issues.length === 0, issueCount: issues.length, issues: issues.slice(0, 200), checkedAt: U.isoNow() };
+  };
+
+  /** Vá các hệ quả duyệt bị đứt giữa chừng (an toàn, idempotent). */
+  Integrity.reconcile = function (ctx) {
+    P.require(ctx, 'user.manage');
+    var fixed = [];
+    Q.Repo.updates.all().forEach(function (u) {
+      var t = Q.Repo.tasks.find(u.task_id);
+      if (t && u.review_status === 'approved' && u.progress_pct === 100 && t.status !== 'completed') {
+        Q.ProgressService._ensureReviewEffects(ctx, u);
+        fixed.push(u.update_id);
+      }
+    });
+    if (fixed.length) Q.Audit.log(ctx, 'admin.reconcile', 'System', 'reconcile', 'evt-reconcile-' + Q.Env.uuid());
+    return { fixed: fixed };
+  };
+})(QLCV);
+
+/* ---- 48_Svc_Maintenance.js ---- */
+/**
+ * Use case: bảo trì (R16): sao lưu thủ công và khôi phục.
+ * Khôi phục bị khóa trên môi trường sản xuất cho tới khi hoàn tất kiểm thử U7.
+ * Phần kỹ thuật sao lưu (sao chép file Drive, dọn bản cũ) nằm ở 98_Backup.js.
+ */
+(function (Q) {
+  'use strict';
+  var U = Q.Util, P = Q.Policy;
+
+  var Maint = Q.MaintenanceService = {};
+
+  Maint.backup = function (ctx) {
+    P.require(ctx, 'user.manage');
+    if (Q.Env.runtime !== 'gas') return { enabled: false, message: 'Sao lưu chỉ khả dụng trên môi trường Google Workspace.' };
+    var res = Q.Backup.run('manual');
+    Q.Audit.log(ctx, 'admin.backup', 'System', res.fileId, 'evt-backup-' + Q.Env.uuid());
+    return res;
+  };
+
+  Maint.restore = function (ctx) {
+    P.require(ctx, 'user.manage');
+    U.fail('NOT_ENABLED', 'Khôi phục dữ liệu bị khóa trên môi trường sản xuất cho tới khi hoàn tất kiểm thử U7. Hãy thực hiện theo operations-runbook.');
+  };
+})(QLCV);
+
+/* ---- 80_Pipeline.js ---- */
+/**
+ * Lớp giao tiếp: đường xử lý chung của mọi request (không biết tới từng action cụ thể).
+ *   1) kiểm tra hình dạng request (object, action, params, requestId);
+ *   2) xác thực (Q.Auth) và giới hạn tần suất theo email;
+ *   3) với thao tác GHI: chạy trong khóa script và dựng lại ngữ cảnh trong khóa (không quyết định trên dữ liệu cũ);
+ *   4) đóng gói kết quả thành envelope { ok, data | error, meta } và ghi nhật ký vận hành.
+ * Bảng action được truyền vào từ 90_Router.js; module này không phụ thuộc vào nghiệp vụ.
+ * Không bao giờ ném lỗi ra ngoài: lỗi hệ thống trả INTERNAL kèm mã tham chiếu, không lộ stack.
+ */
+(function (Q) {
+  'use strict';
+  var U = Q.Util;
+
+  var REQ_ID = /^[A-Za-z0-9_-]{8,64}$/;
+
+  /** Giới hạn số request mỗi phút theo người dùng (RATE_LIMIT_PER_MIN). */
+  function throttle(email) {
+    var Env = Q.Env, k = 'rl:' + Env.sha256(email) + ':' + Math.floor(Env.now().getTime() / 60000);
+    var n = parseInt(Env.cacheGet(k) || '0', 10) + 1;
+    if (n > Q.Config.RATE_LIMIT_PER_MIN) U.fail('TOO_MANY_REQUESTS', 'Bạn thao tác quá nhanh, vui lòng thử lại sau ít giây.');
+    Env.cachePut(k, String(n), 70);
+  }
+
+  var Pipeline = Q.Pipeline = {};
+
+  /** Xử lý một request đã parse với bảng actions cho trước. Trả về envelope; không ném lỗi. */
+  Pipeline.run = function (body, actions) {
+    var Env = Q.Env, t0 = Env.now().getTime(), meta = { version: Q.Config.VERSION }, action = null, who = null;
+    try {
+      if (!body || typeof body !== 'object' || Array.isArray(body)) U.fail('VALIDATION', 'Yêu cầu không hợp lệ.');
+      action = body.action;
+      var def = typeof action === 'string' && Object.prototype.hasOwnProperty.call(actions, action) ? actions[action] : null;
+      if (!def) U.fail('NOT_FOUND', 'Hành động không tồn tại.');
+      var params = body.params === undefined ? {} : body.params;
+      if (!params || typeof params !== 'object' || Array.isArray(params)) U.fail('VALIDATION', 'Tham số không hợp lệ.');
+
+      var requestId = body.requestId;
+      if (requestId !== undefined && !REQ_ID.test(String(requestId))) U.fail('VALIDATION', 'requestId không hợp lệ.');
+      if (def.write && !requestId) U.fail('VALIDATION', 'Thiếu requestId cho thao tác ghi.');
+      meta.requestId = requestId || null;
+
+      Q.Repo.resetCache();
+      var ctx = null;
+      if (def.auth !== false) {
+        var user = Q.Auth.authenticate(body.idToken);
+        who = user.email;
+        throttle(who);
+        ctx = Q.Policy.build(user);
+      }
+      var data;
+      if (def.write) {
+        data = Env.lock(function () {
+          // Dựng lại ngữ cảnh trong khóa để đọc dữ liệu mới nhất (tránh quyết định trên dữ liệu cũ).
+          Q.Repo.resetCache();
+          var fresh = Q.Auth.authenticate(body.idToken);
+          ctx = Q.Policy.build(fresh);
+          return def.fn(ctx, params, { requestId: String(requestId) });
+        });
+        Env.flush();
+      } else {
+        // Đọc: dùng bộ đệm đã nạp lúc xác thực (không đặt lại để khỏi đọc lại Users, Roles...).
+        data = def.fn(ctx, params, { requestId: requestId });
+      }
+      meta.serverTime = U.isoNow();
+      if (who) Env.log({ action: action, user: who, ok: true, ms: Env.now().getTime() - t0 });
+      return { ok: true, data: data, meta: meta };
+    } catch (e) {
+      meta.serverTime = U.isoNow();
+      if (e instanceof U.AppError) {
+        Env.log({ action: action, user: who, ok: false, code: e.code, ms: Env.now().getTime() - t0 });
+        return { ok: false, error: { code: e.code, message: e.message, details: e.details }, meta: meta };
+      }
+      var errorId = Env.uuid().slice(0, 8);
+      Env.logError({ errorId: errorId, action: action, user: who, message: String(e && e.message), stack: String(e && e.stack).slice(0, 800) });
+      return { ok: false, error: { code: 'INTERNAL', message: 'Lỗi hệ thống. Mã tham chiếu: ' + errorId + '. Nếu lặp lại, hãy báo quản trị viên.', details: null }, meta: meta };
+    }
+  };
+})(QLCV);
+
 /* ---- 90_Router.js ---- */
 /**
- * Bộ định tuyến API. Một endpoint duy nhất:  POST  { action, idToken, params, requestId }
- * Trả về luôn dạng:  { ok:true, data, meta } | { ok:false, error:{ code, message, details }, meta }
+ * Điểm vào và bảng định tuyến (composition root của lõi backend).
+ * Một endpoint duy nhất: POST { action, idToken, params, requestId } -> { ok, data | error, meta }.
+ * Bảng ACTIONS là nơi DUY NHẤT nối tên action với use case; thêm nghiệp vụ = thêm dòng ở đây.
  *
  * Giao thức cho trình duyệt: gửi Content-Type: text/plain (request "đơn giản" nên không cần preflight CORS –
  * Apps Script Web App không trả được header CORS cho OPTIONS). Token đặt trong body, KHÔNG đặt trên URL.
@@ -1662,80 +1998,20 @@ var QLCV = (typeof QLCV !== 'undefined' && QLCV) ? QLCV : {};
     'notification.markRead': { write: true, fn: Q.NotificationService.markRead },
     'notification.markAllRead': { write: true, fn: Q.NotificationService.markAllRead },
 
-    'user.options': { fn: Q.AdminService.userOptions },
-    'user.list': { fn: Q.AdminService.userList },
-    'user.create': { write: true, fn: Q.AdminService.userCreate },
-    'user.update': { write: true, fn: Q.AdminService.userUpdate },
+    'user.options': { fn: Q.UserService.options },
+    'user.list': { fn: Q.UserService.list },
+    'user.create': { write: true, fn: Q.UserService.create },
+    'user.update': { write: true, fn: Q.UserService.update },
 
-    'audit.list': { fn: Q.AdminService.auditList },
-    'admin.integrity': { fn: Q.AdminService.integrity },
-    'admin.reconcile': { write: true, fn: Q.AdminService.reconcile },
-    'admin.backup': { write: true, fn: Q.AdminService.backup },
-    'admin.restore': { write: true, fn: Q.AdminService.restore }
+    'audit.list': { fn: Q.AuditService.list },
+    'admin.integrity': { fn: Q.IntegrityService.check },
+    'admin.reconcile': { write: true, fn: Q.IntegrityService.reconcile },
+    'admin.backup': { write: true, fn: Q.MaintenanceService.backup },
+    'admin.restore': { write: true, fn: Q.MaintenanceService.restore }
   };
 
-  var REQ_ID = /^[A-Za-z0-9_-]{8,64}$/;
-
-  function throttle(email) {
-    var Env = Q.Env, k = 'rl:' + Env.sha256(email) + ':' + Math.floor(Env.now().getTime() / 60000);
-    var n = parseInt(Env.cacheGet(k) || '0', 10) + 1;
-    if (n > Q.Config.RATE_LIMIT_PER_MIN) U.fail('TOO_MANY_REQUESTS', 'Bạn thao tác quá nhanh, vui lòng thử lại sau ít giây.');
-    Env.cachePut(k, String(n), 70);
-  }
-
-  /** Xử lý một request đã parse. Không bao giờ ném lỗi ra ngoài. */
-  Q.handle = function (body) {
-    var Env = Q.Env, t0 = Env.now().getTime(), meta = { version: Q.Config.VERSION }, action = null, who = null;
-    try {
-      if (!body || typeof body !== 'object' || Array.isArray(body)) U.fail('VALIDATION', 'Yêu cầu không hợp lệ.');
-      action = body.action;
-      var def = typeof action === 'string' && Object.prototype.hasOwnProperty.call(ACTIONS, action) ? ACTIONS[action] : null;
-      if (!def) U.fail('NOT_FOUND', 'Hành động không tồn tại.');
-      var params = body.params === undefined ? {} : body.params;
-      if (!params || typeof params !== 'object' || Array.isArray(params)) U.fail('VALIDATION', 'Tham số không hợp lệ.');
-
-      var requestId = body.requestId;
-      if (requestId !== undefined && !REQ_ID.test(String(requestId))) U.fail('VALIDATION', 'requestId không hợp lệ.');
-      if (def.write && !requestId) U.fail('VALIDATION', 'Thiếu requestId cho thao tác ghi.');
-      meta.requestId = requestId || null;
-
-      Q.Store.reset();
-      var ctx = null;
-      if (def.auth !== false) {
-        var user = Q.Auth.authenticate(body.idToken);
-        who = user.email;
-        throttle(who);
-        ctx = Q.Policy.build(user);
-      }
-      var data;
-      if (def.write) {
-        data = Env.lock(function () {
-          // Dựng lại ngữ cảnh trong khóa để đọc dữ liệu mới nhất (tránh quyết định trên dữ liệu cũ).
-          Q.Store.reset();
-          var fresh = Q.Auth.authenticate(body.idToken);
-          ctx = Q.Policy.build(fresh);
-          return def.fn(ctx, params, { requestId: String(requestId) });
-        });
-        Env.flush();
-      } else {
-        // Đọc: dùng bộ đệm đã nạp lúc xác thực (không đặt lại để khỏi đọc lại Users, Roles...).
-        data = def.fn(ctx, params, { requestId: requestId });
-      }
-      meta.serverTime = U.isoNow();
-      if (who) Env.log({ action: action, user: who, ok: true, ms: Env.now().getTime() - t0 });
-      return { ok: true, data: data, meta: meta };
-    } catch (e) {
-      meta.serverTime = U.isoNow();
-      if (e instanceof U.AppError) {
-        Env.log({ action: action, user: who, ok: false, code: e.code, ms: Env.now().getTime() - t0 });
-        return { ok: false, error: { code: e.code, message: e.message, details: e.details }, meta: meta };
-      }
-      var errorId = Env.uuid().slice(0, 8);
-      Env.logError({ errorId: errorId, action: action, user: who, message: String(e && e.message), stack: String(e && e.stack).slice(0, 800) });
-      return { ok: false, error: { code: 'INTERNAL', message: 'Lỗi hệ thống. Mã tham chiếu: ' + errorId + '. Nếu lặp lại, hãy báo quản trị viên.', details: null }, meta: meta };
-    }
-  };
-
+  /** Xử lý một request đã parse (dùng cho cả Apps Script, demo trình duyệt và kiểm thử). */
+  Q.handle = function (body) { return Q.Pipeline.run(body, ACTIONS); };
   Q.actions = function () { return Object.keys(ACTIONS); };
 
   // ---- Điểm vào của Apps Script Web App ----
@@ -1761,6 +2037,7 @@ function doGet(e) { return QLCV.doGet(e); }
 /* ---- 95_Setup.js ---- */
 /**
  * Khởi tạo & vận hành trên Google Sheets (chạy từ trình soạn thảo Apps Script hoặc menu "QLCV").
+ * Đây là công cụ quản trị một lần/định kỳ, không phải đường xử lý request; ghi dữ liệu qua Q.Repo.
  *  1) Đặt Script Properties:  SPREADSHEET_ID (nếu script không gắn sổ), GOOGLE_CLIENT_ID, ADMIN_EMAIL,
  *     tùy chọn ALLOWED_DOMAIN, DIRECTOR_EMAILS, BACKUP_FOLDER_ID.
  *  2) Chạy bootstrapDatabase()  -> tạo 10 tab, nạp Roles/Permissions/RolePermissions, tạo Admin đầu tiên.
@@ -1771,12 +2048,13 @@ function doGet(e) { return QLCV.doGet(e); }
 (function (Q) {
   'use strict';
   var U = Q.Util;
-  if (typeof SpreadsheetApp === 'undefined') { Q.Setup = {}; Q.Backup = {}; return; }
+  if (typeof SpreadsheetApp === 'undefined') { Q.Setup = {}; return; }
 
   var Setup = Q.Setup = {};
 
   function book() { return Q.SheetDriver.book(); }
 
+  /** Tạo đủ các tab theo lược đồ; kiểm tra tiêu đề cột của tab đã có (sai thì dừng, không ghi đè). */
   Setup.ensureTabs = function () {
     var ss = book(), report = [];
     Q.Schema.names.forEach(function (t) {
@@ -1798,14 +2076,13 @@ function doGet(e) { return QLCV.doGet(e); }
     return report;
   };
 
-  function insertAll(table, rows) { Q.Store.insertMany(table, rows); }
-
+  /** Nạp bảng tham chiếu (vai trò, quyền) khi bảng còn trống, rồi xóa bộ nhớ đệm vai trò/quyền. */
   Setup.loadReference = function () {
     var R = Q.SeedData.reference;
     ['Roles', 'Permissions', 'RolePermissions'].forEach(function (t) {
-      if (Q.Store.count(t) === 0) insertAll(t, R[t]);
+      if (Q.Repo.of(t).count() === 0) Q.Repo.of(t).insertMany(R[t]);
     });
-    Q.Policy.clearReference();   // vai trò/quyền vừa nạp: bỏ bản cache cũ
+    Q.Policy.clearReference();
   };
 
   Setup.bootstrapDatabase = function () {
@@ -1814,10 +2091,10 @@ function doGet(e) { return QLCV.doGet(e); }
     Q.Store.reset();
     Setup.loadReference();
     var adminEmail = (Q.Env.prop('ADMIN_EMAIL') || '').trim().toLowerCase();
-    if (Q.Store.count('Users') === 0) {
+    if (Q.Repo.users.count() === 0) {
       if (!adminEmail) throw new Error('Đặt Script Property ADMIN_EMAIL trước khi bootstrap.');
       var now = U.isoNow();
-      Q.Store.insert('Users', { user_id: 'USR-001', email: U.email(adminEmail), employee_code: 'ADMIN-001', full_name: 'Quản trị hệ thống',
+      Q.Repo.users.insert({ user_id: 'USR-001', email: U.email(adminEmail), employee_code: 'ADMIN-001', full_name: 'Quản trị hệ thống',
         role_id: 'ROL-ADMIN', org_unit: 'HOI-SO', status: 'active', created_at: now, updated_at: now });
       report.push('Tạo Admin đầu tiên: ' + adminEmail);
     }
@@ -1832,13 +2109,13 @@ function doGet(e) { return QLCV.doGet(e); }
     Setup.ensureTabs();
     Q.Store.reset();
     ['Users', 'Customers', 'Tasks', 'TaskAssignees', 'TaskUpdates', 'Notifications', 'AuditLogs'].forEach(function (t) {
-      if (Q.Store.count(t) > 0) throw new Error('Từ chối: tab ' + t + ' đã có dữ liệu.');
+      if (Q.Repo.of(t).count() > 0) throw new Error('Từ chối: tab ' + t + ' đã có dữ liệu.');
     });
     Setup.loadReference();
     var adminEmail = (Q.Env.prop('ADMIN_EMAIL') || '').trim().toLowerCase();
     var D = Q.SeedData.demo;
     Object.keys(D).forEach(function (t) {
-      insertAll(t, D[t].map(function (r) {
+      Q.Repo.of(t).insertMany(D[t].map(function (r) {
         // Cho phép đăng nhập thử bằng tài khoản Admin thật của người cài đặt.
         if (t === 'Users' && r.user_id === 'USR-001' && adminEmail) { r = Object.assign({}, r, { email: adminEmail }); }
         return r;
@@ -1847,14 +2124,16 @@ function doGet(e) { return QLCV.doGet(e); }
     console.log('Đã nạp dữ liệu tổng hợp.');
   };
 
+  /** Chạy kiểm tra toàn vẹn dưới quyền Admin đầu tiên (dùng từ trình soạn thảo). */
   Setup.checkIntegrity = function () {
     Q.Store.reset();
-    var admin = Q.Store.all('Users').filter(function (u) { return u.role_id === 'ROL-ADMIN'; })[0];
-    var res = Q.AdminService.integrity({ perms: { 'user.manage': true }, user: admin });
+    var admin = Q.Repo.users.byRole(Q.Repo.roles.idByCode('Admin'))[0];
+    var res = Q.IntegrityService.check({ perms: { 'user.manage': true }, user: admin });
     console.log(JSON.stringify(res, null, 2));
     return res;
   };
 
+  /** Chỉ chủ sở hữu được sửa trực tiếp các tab (R4). */
   Setup.protectSheets = function () {
     var me = Session.getEffectiveUser();
     Q.Schema.names.forEach(function (t) {
@@ -1876,30 +2155,6 @@ function doGet(e) { return QLCV.doGet(e); }
       backupFolder: Q.Env.prop('BACKUP_FOLDER_ID') || '(thư mục gốc Drive)', allowSeed: Q.Env.prop('ALLOW_SEED') === 'true', version: Q.Config.VERSION };
     console.log(JSON.stringify(out, null, 2));
     return out;
-  };
-
-  /* ---------- Sao lưu ---------- */
-  Q.Backup = {
-    run: function (kind) {
-      var stamp = Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'yyyyMMdd_HHmm');
-      var file = DriveApp.getFileById(book().getId());
-      var folderId = Q.Env.prop('BACKUP_FOLDER_ID');
-      var name = 'QLCV_backup_' + kind + '_' + stamp;
-      var copy = folderId ? file.makeCopy(name, DriveApp.getFolderById(folderId)) : file.makeCopy(name);
-      var removed = Q.Backup.prune(folderId);
-      return { enabled: true, fileId: copy.getId(), name: name, pruned: removed };
-    },
-    /** Đưa vào thùng rác bản sao lưu cũ hơn BACKUP_RETENTION_DAYS (chỉ trong thư mục sao lưu, theo tiền tố tên). */
-    prune: function (folderId) {
-      if (!folderId) return 0;
-      var cutoff = Date.now() - Q.Config.BACKUP_RETENTION_DAYS * 86400000, n = 0;
-      var it = DriveApp.getFolderById(folderId).getFiles();
-      while (it.hasNext()) {
-        var f = it.next();
-        if (f.getName().indexOf('QLCV_backup_') === 0 && f.getDateCreated().getTime() < cutoff) { f.setTrashed(true); n++; }
-      }
-      return n;
-    }
   };
 })(QLCV);
 
@@ -2697,7 +2952,14 @@ QLCV.SeedData = {
   }
 
   Q.Bench = {
-    run: function () {
+    /** spreadsheetId (tùy chọn): cần khi chạy qua API (clasp run), vì khi đó không có bảng tính "đang mở". Chỉ có hiệu lực trong lần chạy này. */
+    run: function (spreadsheetId) {
+      if (!spreadsheetId) return Q.Bench.measure();
+      var orig = Q.Env.prop;
+      Q.Env.prop = function (k) { return k === 'SPREADSHEET_ID' ? spreadsheetId : orig(k); };
+      try { return Q.Bench.measure(); } finally { Q.Env.prop = orig; }
+    },
+    measure: function () {
       var U = Q.Util, out = { version: Q.Config.VERSION, at: U.isoNow(), tables: {}, requests: {} };
       Q.Store.reset();
       var admin = Q.Store.all('Users').filter(function (u) { return u.role_id === 'ROL-ADMIN' && u.status === 'active'; })[0];
@@ -2709,6 +2971,25 @@ QLCV.SeedData = {
         var st = time(function () { Q.Store.reset(); rows = Q.Store.all(t).length; }, 3);
         out.tables[t] = { rows: rows, readMs: st.median };
       });
+
+      // 1b) So sánh XEN KẼ trong cùng lần chạy (loại bỏ dao động theo thời điểm): đọc tab kiểu cũ (3 lượt) và kiểu mới (2 lượt).
+      var book = Q.SheetDriver.book(), ab = {};
+      ['Users', 'Roles'].forEach(function (t) {
+        var sh = book.getSheetByName(t), n = Q.Schema.cols(t).length, a = [], b = [];
+        for (var i = 0; i < 6; i++) {
+          var t0 = Date.now();                                   // kiểu cũ: tiêu đề, dòng cuối, dữ liệu
+          sh.getRange(1, 1, 1, n).getValues();
+          var last = sh.getLastRow();
+          if (last > 1) sh.getRange(2, 1, last - 1, n).getValues();
+          a.push(Date.now() - t0);
+          t0 = Date.now();                                       // kiểu mới: dòng cuối, rồi tiêu đề + dữ liệu một lượt
+          var last2 = sh.getLastRow();
+          sh.getRange(1, 1, Math.max(last2, 1), n).getValues();
+          b.push(Date.now() - t0);
+        }
+        ab[t] = { oldThreeCalls: stats(a), newTwoCalls: stats(b) };
+      });
+      out.readStrategyAB = ab;
 
       // 2) Bộ nhớ đệm vai trò/quyền: lạnh (xóa cache) so với ấm.
       var cold = time(function () { Q.Policy.clearReference(); Q.Store.reset(); Q.Policy.build(admin); }, 3);
@@ -2739,7 +3020,42 @@ QLCV.SeedData = {
   };
 })(QLCV);
 
-function benchPerformance() { return QLCV.Bench.run(); }
+function benchPerformance(spreadsheetId) { return QLCV.Bench.run(spreadsheetId); }
+
+/* ---- 98_Backup.js ---- */
+/**
+ * Hạ tầng sao lưu (R16): sao chép tab tính toán thành một bản Google Sheets trên Drive, và dọn bản cũ.
+ * Chỉ chạy trên Apps Script (cần DriveApp). Use case gọi qua 48_Svc_Maintenance.js và dailyBackup() ở 95_Setup.js.
+ */
+(function (Q) {
+  'use strict';
+  if (typeof SpreadsheetApp === 'undefined') { Q.Backup = {}; return; }
+
+  function book() { return Q.SheetDriver.book(); }
+
+  Q.Backup = {
+    run: function (kind) {
+      var stamp = Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'yyyyMMdd_HHmm');
+      var file = DriveApp.getFileById(book().getId());
+      var folderId = Q.Env.prop('BACKUP_FOLDER_ID');
+      var name = 'QLCV_backup_' + kind + '_' + stamp;
+      var copy = folderId ? file.makeCopy(name, DriveApp.getFolderById(folderId)) : file.makeCopy(name);
+      var removed = Q.Backup.prune(folderId);
+      return { enabled: true, fileId: copy.getId(), name: name, pruned: removed };
+    },
+    /** Đưa vào thùng rác bản sao lưu cũ hơn BACKUP_RETENTION_DAYS (chỉ trong thư mục sao lưu, theo tiền tố tên). */
+    prune: function (folderId) {
+      if (!folderId) return 0;
+      var cutoff = Date.now() - Q.Config.BACKUP_RETENTION_DAYS * 86400000, n = 0;
+      var it = DriveApp.getFolderById(folderId).getFiles();
+      while (it.hasNext()) {
+        var f = it.next();
+        if (f.getName().indexOf('QLCV_backup_') === 0 && f.getDateCreated().getTime() < cutoff) { f.setTrashed(true); n++; }
+      }
+      return n;
+    }
+  };
+})(QLCV);
 
 /* ---- Env_Memory.js ---- */
 /**

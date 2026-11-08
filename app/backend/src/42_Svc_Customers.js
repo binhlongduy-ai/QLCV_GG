@@ -1,12 +1,12 @@
 /**
- * Khách hàng (R9, R17). Không có dư nợ / nhóm nợ / thông tin tín dụng (R9, R13).
+ * Use case: khách hàng (R9, R17). Không có dư nợ, nhóm nợ hay thông tin tín dụng (R9, R13).
  * Trường "Người đại diện công ty" chỉ có ở khách hàng doanh nghiệp (R17). Xóa = lưu trữ (xóa mềm).
  */
 (function (Q) {
   'use strict';
-  var U = Q.Util, P = Q.Policy, L = Q.Config.LIMITS, E = Q.Enums;
-  function S() { return Q.Store; }
+  var U = Q.Util, P = Q.Policy, L = Q.Config.LIMITS, E = Q.Enums, D = Q.Domain;
 
+  /** Kiểm tra và chuẩn hóa các trường khách hàng từ tham số. partial=true: chỉ các trường có mặt trong p. */
   function fields(p, partial) {
     var out = {};
     function has(k) { return p[k] !== undefined; }
@@ -33,7 +33,7 @@
     }
     rows = U.sortBy(rows, function (c) { return U.norm(c.name); }, 'asc');
     var page = U.paginate(rows, p);
-    page.items = page.items.map(Q.DTO.customer);
+    page.items = page.items.map(Q.Presenters.customer);
     return page;
   };
 
@@ -41,61 +41,62 @@
     P.require(ctx, 'customer.view');
     var c = P.customerOrFail(ctx, p && p.customerId);
     var tasks = P.visibleTasks(ctx).filter(function (t) { return t.customer_id === c.customer_id && !t.archived_at; });
-    return { customer: Q.DTO.customer(c), tasks: Q.DTO.tasks(ctx, tasks) };
+    return { customer: Q.Presenters.customer(c), tasks: Q.Presenters.tasks(ctx, tasks) };
   };
 
   C.create = function (ctx, p, meta) {
     P.require(ctx, 'customer.maintain');
     var key = 'evt-customer.create-' + meta.requestId;
     var dup = Q.Audit.find(key);
-    if (dup) return { customer: Q.DTO.customer(S().find('Customers', dup.entity_id)), replayed: true };
+    if (dup) return { customer: Q.Presenters.customer(Q.Repo.customers.find(dup.entity_id)), replayed: true };
 
     var f = fields(p, false);
-    if (f.type === 'personal' && f.company_representative) U.invalid('companyRepresentative', 'Chỉ khách hàng doanh nghiệp mới có người đại diện công ty.');
-    var id = S().nextId('Customers'), code;
+    D.Customer.assertRepresentativeAllowed(f.type, f.company_representative);
+    var id = Q.Repo.customers.nextId(), code;
     if (p.customerCode) {
       code = U.str(p.customerCode, { field: 'customerCode', label: 'Mã khách hàng', max: 30, pattern: /^[A-Za-z0-9_-]{3,30}$/ });
     } else {
-      code = 'KH-' + U.pad(parseInt(id.split('-')[1], 10), 4);
+      code = D.Codes.customerCodeFor(id);
     }
-    if (S().findBy('Customers', 'customer_code', code).length) U.invalid('customerCode', 'Mã khách hàng đã tồn tại.');
+    if (Q.Repo.customers.byCode(code).length) U.invalid('customerCode', 'Mã khách hàng đã tồn tại.');
     var now = U.isoNow();
-    var c = S().insert('Customers', {
+    var c = Q.Repo.customers.insert({
       customer_id: id, customer_code: code, name: f.name, type: f.type, phone: f.phone, status: f.status,
       created_at: now, updated_at: now, company_representative: f.company_representative || '', archived_at: ''
     });
     Q.Audit.log(ctx, 'customer.create', 'Customer', c.customer_id, key);
-    return { customer: Q.DTO.customer(c), replayed: false };
+    return { customer: Q.Presenters.customer(c), replayed: false };
   };
 
   C.update = function (ctx, p, meta) {
     P.require(ctx, 'customer.maintain');
-    var c = S().find('Customers', p.customerId);
+    var c = Q.Repo.customers.find(p.customerId);
     if (!c) U.fail('NOT_FOUND', 'Không tìm thấy khách hàng.');
     if (c.archived_at) U.fail('CONFLICT', 'Khách hàng đã được lưu trữ.');
     var f = fields(p, true);
     var type = f.type || c.type;
     if (type === 'personal') {
-      if (f.company_representative) U.invalid('companyRepresentative', 'Chỉ khách hàng doanh nghiệp mới có người đại diện công ty.');
+      D.Customer.assertRepresentativeAllowed(type, f.company_representative);
       if (f.type === 'personal') f.company_representative = '';   // đổi sang cá nhân thì xóa trường đại diện
     }
     if (!Object.keys(f).length) U.invalid(null, 'Không có thay đổi nào để lưu.');
     f.updated_at = U.isoNow();
-    var up = S().update('Customers', c.customer_id, f);
+    var up = Q.Repo.customers.update(c.customer_id, f);
     Q.Audit.log(ctx, 'customer.update', 'Customer', c.customer_id, 'evt-customer.update-' + meta.requestId);
-    return { customer: Q.DTO.customer(up) };
+    return { customer: Q.Presenters.customer(up) };
   };
 
+  /** Lưu trữ khách hàng: không cho lưu trữ khi còn công việc chưa hoàn thành. */
   C.archive = function (ctx, p, meta) {
     P.require(ctx, 'customer.delete');
-    var c = S().find('Customers', p.customerId);
+    var c = Q.Repo.customers.find(p.customerId);
     if (!c) U.fail('NOT_FOUND', 'Không tìm thấy khách hàng.');
-    var open = S().findBy('Tasks', 'customer_id', c.customer_id).filter(function (t) { return t.status !== 'completed' && !t.archived_at; });
+    var open = Q.Repo.tasks.byCustomer(c.customer_id).filter(function (t) { return D.Task.isOpen(t); });
     var archive = p.archived === undefined ? true : U.bool(p.archived);
     if (archive && open.length) U.fail('CONFLICT', 'Khách hàng còn ' + open.length + ' công việc chưa hoàn thành, không thể lưu trữ.');
-    if (archive === !!c.archived_at) return { customer: Q.DTO.customer(c) };
-    var up = S().update('Customers', c.customer_id, { archived_at: archive ? U.isoNow() : '', updated_at: U.isoNow() });
+    if (archive === !!c.archived_at) return { customer: Q.Presenters.customer(c) };
+    var up = Q.Repo.customers.update(c.customer_id, { archived_at: archive ? U.isoNow() : '', updated_at: U.isoNow() });
     Q.Audit.log(ctx, archive ? 'customer.archive' : 'customer.restore', 'Customer', c.customer_id, 'evt-customer.archive-' + meta.requestId);
-    return { customer: Q.DTO.customer(up) };
+    return { customer: Q.Presenters.customer(up) };
   };
 })(QLCV);

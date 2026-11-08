@@ -7,7 +7,7 @@
   "scripts": {
     "build": "node tools/build.js",
     "seed": "node tools/build.js seed",
-    "test": "node --test tests/api.test.js tests/gas-runtime.test.js tests/store.test.js tests/driver-sheet.test.js tests/refactor.test.js",
+    "test": "node --test tests/api.test.js tests/gas-runtime.test.js tests/store.test.js tests/driver-sheet.test.js tests/refactor.test.js tests/characterization.test.js",
     "serve": "node tools/build.js demo && node tools/build.js config && python3 -m http.server 8080 --directory frontend"
   }
 }

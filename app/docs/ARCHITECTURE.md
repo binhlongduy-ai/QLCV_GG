@@ -10,7 +10,7 @@ Trình duyệt (SPA, ES modules)
    │  POST text/plain {action, idToken, params, requestId}
    ▼
 Apps Script Web App  (doPost)             ← 1 endpoint duy nhất
-   Router → Services → Policy (RBAC + phạm vi dòng) → Store → Driver
+   Pipeline → Router (bảng ACTIONS) → Use case → Policy (RBAC + phạm vi dòng) / Repository → Store → Driver
                                                                  │
                                                        Google Sheets (10 tab)
 ```
@@ -20,23 +20,70 @@ Apps Script Web App  (doPost)             ← 1 endpoint duy nhất
 - **Ghi dữ liệu**: mọi action ghi bắt buộc `requestId` (8–64 ký tự `[A-Za-z0-9_-]`), chạy trong `LockService` và xác thực lại trong khóa; `requestId` đảm bảo idempotent (gửi lại không tạo bản ghi trùng).
 - **Một mã nguồn cho ba môi trường**: cùng lõi chạy trên GAS (SheetDriver), trong trình duyệt ở chế độ demo (MemoryDriver, lưu localStorage) và trong test Node. Muốn chuyển sang PostgreSQL chỉ cần thay Driver, giữ nguyên Services/Policy.
 
-## 2. Cấu trúc tệp
+## 2. Kiến trúc theo lớp (Clean Architecture)
+
+Lõi backend được tổ chức theo các lớp. Quy tắc phụ thuộc: **lớp ngoài gọi lớp trong, không ngược lại**.
+
+```
+Giao tiếp (80, 90)  ──►  Ứng dụng / use case (40–48)  ──►  Miền nghiệp vụ (20)
+                              │                                   ▲ (thuần, không I/O)
+                              ▼                                   │
+                    Adapter: repository (22), presenter (23),     │
+                    hoạt động & phân công (24, 25), quyền (21) ───┘
+                              │
+                              ▼
+                    Hạ tầng: Store (02), Driver Sheet (11), Env GAS (10),
+                    Google token (12), sao lưu (98), khởi tạo (95)
+```
+
+| Lớp | Tệp | Trách nhiệm | Được phụ thuộc vào |
+|---|---|---|---|
+| Dùng chung | `00_Namespace`, `01_Util` | Config, enum, lược đồ 10 bảng; lỗi nghiệp vụ, kiểm tra đầu vào, ngày giờ | — |
+| Miền | `20_Domain` | Quy tắc thuần: trễ hạn, khóa sửa công việc, R6/R8/R10, chống tự khóa Admin, mã hiển thị | Dùng chung |
+| Adapter dữ liệu | `22_Repositories` | Điểm DUY NHẤT chạm `Q.Store`; truy vấn theo nghiệp vụ (`Repo.assignments.activeForTask`…) | Store |
+| Quyền | `21_Access` | Xác thực người dùng (`Q.Auth`), RBAC và phạm vi bản ghi (`Q.Policy`) | Repo, Google token |
+| Adapter ra ngoài | `23_Presenters` | Bản ghi → DTO camelCase (hợp đồng API giữ nguyên) | Repo, Domain |
+| Ứng dụng | `24_Activity`, `25_Assignments` | Nhật ký kiểm toán, thông báo (khử trùng lặp), phân công | Repo, Domain |
+| Use case | `40–48_Svc_*` | Công việc, tiến độ, khách hàng, người dùng, dashboard, thông báo, nhật ký, toàn vẹn, bảo trì | Tất cả lớp trên |
+| Giao tiếp | `80_Pipeline` | Kiểm tra request, xác thực, giới hạn tần suất, khóa khi ghi, envelope `{ok, data|error, meta}` | Use case qua bảng action |
+| Composition root | `90_Router` | Bảng ACTIONS (nối tên action với use case), `doPost`/`doGet` | Mọi lớp |
+| Hạ tầng | `02_Store`, `10_Env_Gas`, `11_Driver_Sheet`, `12_Google_Auth`, `95_Setup`, `98_Backup` | Lưu trữ, khóa/bộ nhớ đệm/Properties, Sheets, xác minh Google, khởi tạo, sao lưu | Dùng chung |
+
+Các tệp được nạp theo thứ tự tên trong cả Apps Script và kiểm thử (`tests/harness.js`), nên tiền tố số giữ đúng thứ tự phụ thuộc lúc nạp. Quy tắc phụ thuộc được kiểm chứng bằng kiểm thử: `tests/characterization.test.js` chạy 140 bước qua mọi action và so khớp từng kết quả với `tests/golden/characterization.json`.
+
+## 2a. Cấu trúc tệp
 
 ```
 app/
 ├─ backend/
-│  ├─ src/            Mã đẩy lên Apps Script (nạp theo thứ tự số)
-│  │  ├─ 00_Namespace.js   Config, Enums, Schema (10 bảng)
-│  │  ├─ 01_Util.js        AppError, kiểm tra dữ liệu, phân trang
-│  │  ├─ 02_Store.js       Truy cập dữ liệu, bất biến, append-only, sinh mã
-│  │  ├─ 10_Env_Gas.js     Lock, Cache, Properties, UrlFetch
-│  │  ├─ 11_Driver_Sheet.js Đọc/ghi Google Sheets
-│  │  ├─ 20_Auth_Policy.js Xác thực token, RBAC, phạm vi dòng
-│  │  ├─ 30_Core.js        Audit, Notify, DTO, phân công
-│  │  ├─ 40–44_Svc_*.js    Tasks, Progress, Customers, Admin, Dashboard/Notification
-│  │  ├─ 90_Router.js      Bảng ACTIONS, doPost/doGet
-│  │  ├─ 95_Setup.js       Khởi tạo DB, trigger, sao lưu, menu QLCV
-│  │  ├─ 96_Seed.js        (sinh tự động từ CSV)
+│  ├─ src/            Mã đẩy lên Apps Script (nạp theo thứ tự tên; xem bảng lớp ở mục 2)
+│  │  ├─ 00_Namespace.js     Config, Enums, Schema (10 bảng)
+│  │  ├─ 01_Util.js          AppError, kiểm tra dữ liệu, ngày giờ, phân trang
+│  │  ├─ 02_Store.js         Lớp lưu trữ chung: chỉ mục, bất biến, append-only, sinh mã
+│  │  ├─ 10_Env_Gas.js       Hạ tầng GAS: Lock, Cache, Properties, UrlFetch
+│  │  ├─ 11_Driver_Sheet.js  Driver Google Sheets
+│  │  ├─ 12_Google_Auth.js   Xác minh Google ID token
+│  │  ├─ 20_Domain.js        Quy tắc nghiệp vụ thuần
+│  │  ├─ 21_Access.js        Xác thực người dùng, RBAC, phạm vi bản ghi
+│  │  ├─ 22_Repositories.js  Repository (điểm duy nhất chạm Store)
+│  │  ├─ 23_Presenters.js    DTO trả về giao diện
+│  │  ├─ 24_Activity.js      Nhật ký kiểm toán, thông báo
+│  │  ├─ 25_Assignments.js   Phân công, người nhận thông báo duyệt
+│  │  ├─ 40_Svc_Tasks.js     Use case: công việc & phân công
+│  │  ├─ 41_Svc_Progress.js  Use case: tiến độ & duyệt
+│  │  ├─ 42_Svc_Customers.js Use case: khách hàng
+│  │  ├─ 43_Svc_Users.js     Use case: người dùng
+│  │  ├─ 44_Svc_Dashboard.js Use case: bảng điều khiển, phiên làm việc
+│  │  ├─ 45_Svc_Notifications.js Use case: thông báo trong ứng dụng
+│  │  ├─ 46_Svc_Audit.js     Use case: tra cứu nhật ký kiểm toán
+│  │  ├─ 47_Svc_Integrity.js Use case: kiểm tra toàn vẹn, vá hệ quả duyệt
+│  │  ├─ 48_Svc_Maintenance.js Use case: sao lưu, khôi phục
+│  │  ├─ 80_Pipeline.js      Đường xử lý request chung
+│  │  ├─ 90_Router.js        Bảng ACTIONS, doPost/doGet
+│  │  ├─ 95_Setup.js         Khởi tạo DB, trigger, menu QLCV
+│  │  ├─ 96_Seed.js          (sinh tự động từ CSV)
+│  │  ├─ 97_Bench.js         Đo hiệu năng trên Apps Script (chỉ đọc)
+│  │  ├─ 98_Backup.js        Sao lưu Drive
 │  │  └─ appsscript.json
 │  └─ dev/Env_Memory.js   Môi trường bộ nhớ (KHÔNG đẩy lên GAS)
 ├─ frontend/          SPA tĩnh (index.html, config.js, css/, js/, demo/)
