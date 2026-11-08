@@ -1,0 +1,5 @@
+role_id,code,name,description
+ROL-ADMIN,Admin,Quản trị,Quản lý người dùng và toàn bộ phạm vi thí điểm
+ROL-BGD,BGD,Ban Giám đốc,Xem phạm vi thí điểm; tạo và giao việc; chỉ đọc khách hàng
+ROL-KSV,KSV,Kiểm soát viên,Quản lý công việc; duyệt tiến độ; duy trì khách hàng
+ROL-CBTD,CBTD,Cán bộ tín dụng,Xem và xử lý công việc được giao; gửi tiến độ

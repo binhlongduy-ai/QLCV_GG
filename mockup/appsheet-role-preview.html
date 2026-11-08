@@ -1,0 +1,620 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mockup AppSheet theo vai trò — QLCV CBTD</title>
+<style>
+:root {
+  --primary: #10b981; --primary-dark: #059669; --primary-soft: #d1fae5;
+  --bg: #f0fdf4; --card: #ffffff; --text: #064e3b; --muted: #64748b; --border: #d1fae5;
+  --amber: #b45309; --amber-soft: #fef3c7; --red: #b91c1c; --red-soft: #fee2e2;
+  --gray-soft: #e2e8f0; --blue: #0369a1; --blue-soft: #e0f2fe; --radius: 12px;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); font-size: 15px; }
+header.top { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 14px 20px; background: var(--card); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 2; }
+.brand { font-weight: 800; font-size: 18px; }
+.brand small { display: block; font-weight: 500; color: var(--muted); font-size: 12px; }
+.controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+select, input, textarea, button { font: inherit; }
+select, input, textarea { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; background: #fff; color: var(--text); }
+textarea { width: 100%; min-height: 70px; }
+input, select { width: 100%; }
+label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+button { border: 0; border-radius: 8px; padding: 8px 14px; background: var(--primary); color: #fff; font-weight: 600; cursor: pointer; }
+button:hover { background: var(--primary-dark); }
+button.ghost { background: transparent; color: var(--primary-dark); border: 1px solid var(--border); }
+button.danger { background: #dc2626; }
+button.danger:hover { background: #b91c1c; }
+.mock-banner { background: var(--amber-soft); color: var(--amber); padding: 10px 20px; font-size: 13px; border-bottom: 1px solid #fde68a; }
+.layout { display: grid; grid-template-columns: 220px 1fr; min-height: calc(100vh - 110px); }
+nav.side { background: var(--card); border-right: 1px solid var(--border); padding: 14px 10px; }
+nav.side a { display: block; padding: 10px 12px; border-radius: 8px; color: var(--text); cursor: pointer; margin-bottom: 4px; }
+nav.side a:hover { background: var(--bg); }
+nav.side a.active { background: var(--primary-soft); font-weight: 700; color: var(--primary-dark); }
+main { padding: 20px; min-width: 0; }
+h2 { margin: 4px 0 4px; font-size: 22px; }
+h3 { font-size: 16px; }
+.sub { color: var(--muted); margin: 0 0 16px; font-size: 14px; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.stat { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+.stat .v { font-size: 26px; font-weight: 800; }
+.stat .l { color: var(--muted); font-size: 13px; }
+.scroll { overflow-x: auto; }
+table.tbl { width: 100%; border-collapse: collapse; font-size: 14px; }
+table.tbl th, table.tbl td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+table.tbl th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .03em; }
+table.tbl tr.click { cursor: pointer; }
+table.tbl tr.click:hover td { background: #f7fee9; }
+.badge { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.b-not_started, .b-low, .b-collaborator { background: var(--gray-soft); color: #334155; }
+.b-in_progress, .b-pending, .b-high { background: var(--amber-soft); color: var(--amber); }
+.b-completed, .b-approved, .b-active { background: var(--primary-soft); color: var(--primary-dark); }
+.b-rejected, .b-inactive { background: var(--red-soft); color: var(--red); }
+.b-primary, .b-normal { background: var(--blue-soft); color: var(--blue); }
+.empty { text-align: center; padding: 28px; color: var(--muted); border: 1px dashed var(--border); border-radius: var(--radius); background: var(--card); }
+.flash { background: var(--primary-soft); color: var(--primary-dark); padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; font-weight: 600; }
+.denied { background: var(--red-soft); color: var(--red); padding: 16px; border-radius: var(--radius); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.kv { display: grid; grid-template-columns: 170px 1fr; gap: 6px 12px; font-size: 14px; }
+.kv > div:nth-child(odd) { color: var(--muted); }
+.row-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.unread { font-weight: 700; }
+.notif { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 8px; display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+.muted { color: var(--muted); font-size: 12px; }
+@media (max-width: 760px) {
+  .layout { grid-template-columns: 1fr; }
+  nav.side { display: flex; overflow-x: auto; gap: 6px; padding: 8px; }
+  nav.side a { white-space: nowrap; margin: 0; }
+  .grid2 { grid-template-columns: 1fr; }
+  .kv { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">QLCV CBTD<small>Mockup màn hình AppSheet theo vai trò</small></div>
+  <div class="controls">
+    <label for="userSel" style="margin:0">Đăng nhập với</label>
+    <select id="userSel" data-act="user" style="width:auto"></select>
+    <button class="ghost" data-act="reset">Đặt lại dữ liệu mẫu</button>
+  </div>
+</header>
+<div class="mock-banner">Mockup thử giao diện. Dữ liệu tổng hợp; thay đổi chỉ nằm trong trình duyệt và mất khi tải lại trang. Quyền hiển thị ở đây chỉ minh họa ma trận vai trò; kiểm soát thật phải đạt trong AppSheet theo ma trận nghiệm thu.</div>
+<div class="layout">
+  <nav class="side" id="nav"></nav>
+  <main id="main"></main>
+</div>
+<script>
+const DATA = {"Roles":[{"role_id":"ROL-ADMIN","code":"Admin","name":"Quản trị","description":"Quản lý người dùng và toàn bộ phạm vi thí điểm"},{"role_id":"ROL-BGD","code":"BGD","name":"Ban Giám đốc","description":"Xem phạm vi thí điểm; tạo và giao việc; chỉ đọc khách hàng"},{"role_id":"ROL-KSV","code":"KSV","name":"Kiểm soát viên","description":"Quản lý công việc; duyệt tiến độ; duy trì khách hàng"},{"role_id":"ROL-CBTD","code":"CBTD","name":"Cán bộ tín dụng","description":"Xem và xử lý công việc được giao; gửi tiến độ"}],"Permissions":[{"permission_id":"PER-01","code":"task.view","name":"Xem công việc","description":"Xem công việc trong phạm vi được phép"},{"permission_id":"PER-02","code":"task.create","name":"Tạo công việc","description":"Tạo công việc và giao người thực hiện"},{"permission_id":"PER-03","code":"task.update","name":"Cập nhật công việc","description":"Cập nhật phân công và quản trị công việc; lưu trữ thay vì xóa cứng"},{"permission_id":"PER-04","code":"task.transfer","name":"Chuyển giao người thực hiện chính","description":"Đổi CBTD chính của công việc"},{"permission_id":"PER-05","code":"task.start","name":"Bắt đầu công việc","description":"Chuyển công việc được giao sang Đang thực hiện"},{"permission_id":"PER-06","code":"customer.view","name":"Xem khách hàng","description":"Xem khách hàng trong phạm vi được phép"},{"permission_id":"PER-07","code":"customer.maintain","name":"Duy trì khách hàng","description":"Tạo và cập nhật khách hàng; không xóa"},{"permission_id":"PER-08","code":"customer.delete","name":"Xóa khách hàng","description":"Xóa khách hàng"},{"permission_id":"PER-09","code":"progress.submit","name":"Gửi tiến độ","description":"Gửi cập nhật tiến độ cho công việc được giao"},{"permission_id":"PER-10","code":"progress.review","name":"Duyệt tiến độ","description":"Duyệt hoặc từ chối cập nhật tiến độ"},{"permission_id":"PER-11","code":"dashboard.view","name":"Xem bảng điều khiển","description":"Số liệu trong phạm vi được phép"},{"permission_id":"PER-12","code":"dashboard.view_director","name":"Bảng điều khiển Giám đốc","description":"Có điều kiện; chờ xác nhận cho BGD"},{"permission_id":"PER-13","code":"audit.view","name":"Xem nhật ký kiểm toán","description":"Xem nhật ký kiểm toán"},{"permission_id":"PER-14","code":"notification.view","name":"Xem thông báo","description":"Xem thông báo của chính mình"},{"permission_id":"PER-15","code":"user.manage","name":"Quản lý người dùng","description":"Quản lý người dùng; Backup và Restore"}],"RolePermissions":[{"role_id":"ROL-ADMIN","permission_id":"PER-01","created_at":"2026-10-13T07:50:00Z"},{"role_id":"ROL-ADMIN","permission_id":"PER-02","created_at":"2026-10-13T07:50:00Z"},{"role_id":"ROL-ADMIN","permission_id":"PER-03","created_at":"2026-10-13T07:50:00Z"},{"role_id":"ROL-ADMIN","permission_id":"PER-04","created_at":"2026-10-13T07:50:00Z"},{"role_id":"ROL-ADMIN","permission_id":"PER-05","created_at":"2026-10-13T07:50:00Z"},{"role_id":"ROL-ADMIN","permission_id":"PER-06","created_at":"2026-10-13T07:50:00Z"},{"role_id":"ROL-ADMIN","permission_id":"PER-07","created_at":"2026-10-13T07:50:00Z"},{"role_id":"ROL-ADMIN","permission_id":"PER-08","created_at":"2026-10-13T07:50:00Z"},{"role_id":"ROL-ADMIN","permission_id":"PER-09","created_at":"2026-10-13T07:50:00Z"},{"role_id":"ROL-ADMIN","permission_id":"PER-10","created_at":"2026-10-13T07:50:00Z"},{"role_id":"ROL-ADMIN","permission_id":"PER-11","created_at":"2026-10-13T07:50:00Z"},{"role_id":"ROL-ADMIN","permission_id":"PER-12","created_at":"2026-10-13T07:50:00Z"},{"role_id":"ROL-ADMIN","permission_id":"PER-13","created_at":"2026-10-13T07:50:00Z"},{"role_id":"ROL-ADMIN","permission_id":"PER-14","created_at":"2026-10-13T07:50:00Z"},{"role_id":"ROL-ADMIN","permission_id":"PER-15","created_at":"2026-10-13T07:50:00Z"},{"role_id":"ROL-BGD","permission_id":"PER-01","created_at":"2026-10-13T07:50:00Z"},{"role_id":"ROL-BGD","permission_id":"PER-02","created_at":"2026-10-13T07:50:00Z"},{"role_id":"ROL-BGD","permission_id":"PER-03","created_at":"2026-10-13T07:50:00Z"},{"role_id":"ROL-BGD","permission_id":"PER-05","created_at":"2026-10-13T07:50:00Z"},{"role_id":"ROL-BGD","permission_id":"PER-06","created_at":"2026-10-13T07:50:00Z"},{"role_id":"ROL-BGD","permission_id":"PER-09","created_at":"2026-10-13T07:50:00Z"},{"role_id":"ROL-BGD","permission_id":"PER-11","created_at":"2026-10-13T07:50:00Z"},{"role_id":"ROL-BGD","permission_id":"PER-14","created_at":"2026-10-13T07:50:00Z"},{"role_id":"ROL-KSV","permission_id":"PER-01","created_at":"2026-10-13T07:50:00Z"},{"role_id":"ROL-KSV","permission_id":"PER-02","created_at":"2026-10-13T07:50:00Z"},{"role_id":"ROL-KSV","permission_id":"PER-03","created_at":"2026-10-13T07:50:00Z"},{"role_id":"ROL-KSV","permission_id":"PER-04","created_at":"2026-10-13T07:50:00Z"},{"role_id":"ROL-KSV","permission_id":"PER-05","created_at":"2026-10-13T07:50:00Z"},{"role_id":"ROL-KSV","permission_id":"PER-06","created_at":"2026-10-13T07:50:00Z"},{"role_id":"ROL-KSV","permission_id":"PER-07","created_at":"2026-10-13T07:50:00Z"},{"role_id":"ROL-KSV","permission_id":"PER-09","created_at":"2026-10-13T07:50:00Z"},{"role_id":"ROL-KSV","permission_id":"PER-10","created_at":"2026-10-13T07:50:00Z"},{"role_id":"ROL-KSV","permission_id":"PER-11","created_at":"2026-10-13T07:50:00Z"},{"role_id":"ROL-KSV","permission_id":"PER-14","created_at":"2026-10-13T07:50:00Z"},{"role_id":"ROL-CBTD","permission_id":"PER-01","created_at":"2026-10-13T07:50:00Z"},{"role_id":"ROL-CBTD","permission_id":"PER-02","created_at":"2026-10-13T07:50:00Z"},{"role_id":"ROL-CBTD","permission_id":"PER-05","created_at":"2026-10-13T07:50:00Z"},{"role_id":"ROL-CBTD","permission_id":"PER-06","created_at":"2026-10-13T07:50:00Z"},{"role_id":"ROL-CBTD","permission_id":"PER-09","created_at":"2026-10-13T07:50:00Z"},{"role_id":"ROL-CBTD","permission_id":"PER-11","created_at":"2026-10-13T07:50:00Z"},{"role_id":"ROL-CBTD","permission_id":"PER-14","created_at":"2026-10-13T07:50:00Z"}],"Users":[{"user_id":"USR-001","email":"admin@example.com","employee_code":"NV-TEST-001","full_name":"Quản trị mẫu","role_id":"ROL-ADMIN","org_unit":"DV-THU-NGHIEM","status":"active","created_at":"2026-10-13T07:50:00Z","updated_at":"2026-10-13T07:50:00Z"},{"user_id":"USR-002","email":"bgd@example.com","employee_code":"NV-TEST-002","full_name":"Ban giám đốc mẫu","role_id":"ROL-BGD","org_unit":"DV-THU-NGHIEM","status":"active","created_at":"2026-10-13T07:50:00Z","updated_at":"2026-10-13T07:50:00Z"},{"user_id":"USR-003","email":"ksv01@example.com","employee_code":"NV-TEST-003","full_name":"KSV mẫu 01","role_id":"ROL-KSV","org_unit":"DV-THU-NGHIEM","status":"active","created_at":"2026-10-13T07:50:00Z","updated_at":"2026-10-13T07:50:00Z"},{"user_id":"USR-004","email":"cbtd01@example.com","employee_code":"NV-TEST-004","full_name":"CBTD mẫu 01","role_id":"ROL-CBTD","org_unit":"DV-THU-NGHIEM","status":"active","created_at":"2026-10-13T07:50:00Z","updated_at":"2026-10-13T07:50:00Z"},{"user_id":"USR-005","email":"cbtd02@example.com","employee_code":"NV-TEST-005","full_name":"CBTD mẫu 02","role_id":"ROL-CBTD","org_unit":"DV-THU-NGHIEM","status":"active","created_at":"2026-10-13T07:50:00Z","updated_at":"2026-10-13T07:50:00Z"},{"user_id":"USR-006","email":"cbtd03@example.com","employee_code":"NV-TEST-006","full_name":"CBTD mẫu 03","role_id":"ROL-CBTD","org_unit":"DV-THU-NGHIEM","status":"active","created_at":"2026-10-13T07:50:00Z","updated_at":"2026-10-13T07:50:00Z"},{"user_id":"USR-007","email":"cbtd-inactive@example.com","employee_code":"NV-TEST-007","full_name":"CBTD không hoạt động mẫu","role_id":"ROL-CBTD","org_unit":"DV-THU-NGHIEM","status":"inactive","created_at":"2026-10-13T07:50:00Z","updated_at":"2026-10-13T07:50:00Z"}],"Customers":[{"customer_id":"CUS-001","customer_code":"KH-TEST-001","name":"Khách hàng mẫu A","type":"personal","phone":"0900000001","status":"managed","created_at":"2026-10-13T07:52:00Z","updated_at":"2026-10-13T07:52:00Z"},{"customer_id":"CUS-002","customer_code":"KH-TEST-002","name":"Công ty mẫu B","type":"business","phone":"0900000002","status":"new","created_at":"2026-10-13T07:52:00Z","updated_at":"2026-10-13T07:52:00Z"},{"customer_id":"CUS-003","customer_code":"KH-TEST-003","name":"Khách hàng mẫu C","type":"personal","phone":"0900000003","status":"managed","created_at":"2026-10-13T07:52:00Z","updated_at":"2026-10-13T07:52:00Z"}],"Tasks":[{"task_id":"TSK-001","task_code":"CV-TEST-001","customer_id":"CUS-001","title":"Thẩm định hồ sơ mẫu A","description":"Thu thập và kiểm tra hồ sơ mẫu","status":"in_progress","priority":"high","due_at":"2026-10-20","created_by_user_id":"USR-003","completed_at":"","created_at":"2026-10-13T08:10:00Z","updated_at":"2026-10-13T09:30:00Z"},{"task_id":"TSK-002","task_code":"CV-TEST-002","customer_id":"CUS-002","title":"Kiểm tra tài sản bảo đảm mẫu B","description":"Kiểm tra tài sản theo danh mục mẫu","status":"not_started","priority":"normal","due_at":"2026-10-25","created_by_user_id":"USR-004","completed_at":"","created_at":"2026-10-13T08:20:00Z","updated_at":"2026-10-13T08:20:00Z"},{"task_id":"TSK-003","task_code":"CV-TEST-003","customer_id":"CUS-003","title":"Thu thập hồ sơ tài chính mẫu C","description":"Thu thập báo cáo tài chính mẫu","status":"completed","priority":"high","due_at":"2026-10-10","created_by_user_id":"USR-001","completed_at":"2026-10-12T10:00:00Z","created_at":"2026-10-09T09:00:00Z","updated_at":"2026-10-12T10:00:00Z"},{"task_id":"TSK-004","task_code":"CV-TEST-004","customer_id":"CUS-001","title":"Báo cáo tiến độ mẫu D","description":"Báo cáo định kỳ mẫu","status":"not_started","priority":"low","due_at":"2026-10-30","created_by_user_id":"USR-002","completed_at":"","created_at":"2026-10-13T08:30:00Z","updated_at":"2026-10-13T08:30:00Z"}],"TaskAssignees":[{"assignment_id":"ASG-001","task_id":"TSK-001","user_id":"USR-004","assignee_email_snapshot":"cbtd01@example.com","assignment_role":"primary","assigned_at":"2026-10-13T08:10:00Z","active":"TRUE"},{"assignment_id":"ASG-002","task_id":"TSK-001","user_id":"USR-005","assignee_email_snapshot":"cbtd02@example.com","assignment_role":"collaborator","assigned_at":"2026-10-13T08:12:00Z","active":"TRUE"},{"assignment_id":"ASG-003","task_id":"TSK-001","user_id":"USR-006","assignee_email_snapshot":"cbtd03@example.com","assignment_role":"collaborator","assigned_at":"2026-10-13T08:11:00Z","active":"FALSE"},{"assignment_id":"ASG-004","task_id":"TSK-002","user_id":"USR-004","assignee_email_snapshot":"cbtd01@example.com","assignment_role":"primary","assigned_at":"2026-10-13T08:20:00Z","active":"TRUE"},{"assignment_id":"ASG-005","task_id":"TSK-003","user_id":"USR-004","assignee_email_snapshot":"cbtd01@example.com","assignment_role":"primary","assigned_at":"2026-10-09T09:00:00Z","active":"TRUE"},{"assignment_id":"ASG-006","task_id":"TSK-004","user_id":"USR-006","assignee_email_snapshot":"cbtd03@example.com","assignment_role":"primary","assigned_at":"2026-10-13T08:30:00Z","active":"TRUE"}],"TaskUpdates":[{"update_id":"UPD-001","task_id":"TSK-001","progress_pct":"30","narrative":"Đã thu thập giấy tờ cơ bản mẫu","submitted_by_user_id":"USR-004","submitted_by_email_snapshot":"cbtd01@example.com","submitted_at":"2026-10-13T09:00:00Z","review_status":"approved","reviewed_by_user_id":"USR-003","reviewed_by_email_snapshot":"ksv01@example.com","reviewed_at":"2026-10-13T09:30:00Z","review_comment":"Đạt"},{"update_id":"UPD-002","task_id":"TSK-001","progress_pct":"60","narrative":"Đang đối chiếu hồ sơ mẫu","submitted_by_user_id":"USR-005","submitted_by_email_snapshot":"cbtd02@example.com","submitted_at":"2026-10-13T10:00:00Z","review_status":"pending","reviewed_by_user_id":"","reviewed_by_email_snapshot":"","reviewed_at":"","review_comment":""},{"update_id":"UPD-003","task_id":"TSK-003","progress_pct":"80","narrative":"Còn thiếu một chứng từ mẫu","submitted_by_user_id":"USR-004","submitted_by_email_snapshot":"cbtd01@example.com","submitted_at":"2026-10-11T09:00:00Z","review_status":"rejected","reviewed_by_user_id":"USR-003","reviewed_by_email_snapshot":"ksv01@example.com","reviewed_at":"2026-10-11T11:00:00Z","review_comment":"Cần bổ sung chứng từ"},{"update_id":"UPD-004","task_id":"TSK-003","progress_pct":"100","narrative":"Hoàn thành hồ sơ mẫu","submitted_by_user_id":"USR-004","submitted_by_email_snapshot":"cbtd01@example.com","submitted_at":"2026-10-12T09:00:00Z","review_status":"approved","reviewed_by_user_id":"USR-003","reviewed_by_email_snapshot":"ksv01@example.com","reviewed_at":"2026-10-12T10:00:00Z","review_comment":"Đạt"}],"Notifications":[{"notification_id":"NTF-001","recipient_user_id":"USR-004","event_type":"task_assigned","source_record_id":"ASG-001","request_or_event_key":"evt-assign-ASG-001","message":"Bạn được giao công việc CV-TEST-001","created_at":"2026-10-13T08:10:00Z","read_at":"2026-10-13T08:15:00Z"},{"notification_id":"NTF-002","recipient_user_id":"USR-003","event_type":"progress_submitted","source_record_id":"UPD-001","request_or_event_key":"evt-submit-UPD-001","message":"Có cập nhật tiến độ chờ duyệt CV-TEST-001","created_at":"2026-10-13T09:00:00Z","read_at":""},{"notification_id":"NTF-003","recipient_user_id":"USR-004","event_type":"progress_approved","source_record_id":"UPD-001","request_or_event_key":"evt-review-UPD-001","message":"Cập nhật tiến độ CV-TEST-001 đã được duyệt","created_at":"2026-10-13T09:30:00Z","read_at":""},{"notification_id":"NTF-004","recipient_user_id":"USR-004","event_type":"progress_rejected","source_record_id":"UPD-003","request_or_event_key":"evt-review-UPD-003","message":"Cập nhật tiến độ CV-TEST-003 bị từ chối; xem lý do trong ứng dụng","created_at":"2026-10-11T11:00:00Z","read_at":""}],"AuditLogs":[{"audit_id":"AUD-001","actor_user_id":"USR-001","actor_email_snapshot":"admin@example.com","action":"user.create","entity_type":"User","entity_id":"USR-004","request_or_event_key":"evt-aud-001","created_at":"2026-10-13T07:55:00Z"},{"audit_id":"AUD-002","actor_user_id":"USR-003","actor_email_snapshot":"ksv01@example.com","action":"customer.create","entity_type":"Customer","entity_id":"CUS-001","request_or_event_key":"evt-aud-002","created_at":"2026-10-13T08:00:00Z"},{"audit_id":"AUD-003","actor_user_id":"USR-003","actor_email_snapshot":"ksv01@example.com","action":"task.create","entity_type":"Task","entity_id":"TSK-001","request_or_event_key":"evt-aud-003","created_at":"2026-10-13T08:10:00Z"},{"audit_id":"AUD-004","actor_user_id":"USR-003","actor_email_snapshot":"ksv01@example.com","action":"task.assign","entity_type":"TaskAssignee","entity_id":"ASG-001","request_or_event_key":"evt-aud-004","created_at":"2026-10-13T08:10:00Z"},{"audit_id":"AUD-005","actor_user_id":"USR-004","actor_email_snapshot":"cbtd01@example.com","action":"progress.submit","entity_type":"TaskUpdate","entity_id":"UPD-001","request_or_event_key":"evt-aud-005","created_at":"2026-10-13T09:00:00Z"},{"audit_id":"AUD-006","actor_user_id":"USR-003","actor_email_snapshot":"ksv01@example.com","action":"progress.approve","entity_type":"TaskUpdate","entity_id":"UPD-001","request_or_event_key":"evt-aud-006","created_at":"2026-10-13T09:30:00Z"},{"audit_id":"AUD-007","actor_user_id":"USR-003","actor_email_snapshot":"ksv01@example.com","action":"progress.reject","entity_type":"TaskUpdate","entity_id":"UPD-003","request_or_event_key":"evt-aud-007","created_at":"2026-10-11T11:00:00Z"},{"audit_id":"AUD-008","actor_user_id":"USR-003","actor_email_snapshot":"ksv01@example.com","action":"task.auto_complete","entity_type":"Task","entity_id":"TSK-003","request_or_event_key":"evt-aud-008","created_at":"2026-10-12T10:00:00Z"}]};
+const TODAY = '2026-10-13';
+
+const LABEL = {
+  status: { not_started: 'Chưa làm', in_progress: 'Đang thực hiện', completed: 'Đã hoàn thành' },
+  priority: { high: 'Cao', normal: 'Bình thường', low: 'Thấp' },
+  review: { pending: 'Chờ duyệt', approved: 'Đã duyệt', rejected: 'Bị từ chối' },
+  type: { personal: 'Cá nhân', business: 'Doanh nghiệp' },
+  custStatus: { new: 'Mới', managed: 'Đang quản lý' },
+  role: { Admin: 'Quản trị', BGD: 'Ban Giám đốc', KSV: 'Kiểm soát viên', CBTD: 'Cán bộ tín dụng' },
+  assign: { primary: 'Chính', collaborator: 'Phối hợp' },
+  transfer: { success: 'Đã chuyển giao CBTD chính' },
+};
+
+const NAV = [
+  { page: 'overview', label: 'Tổng quan', icon: '📊', perm: 'dashboard.view' },
+  { page: 'tasks', label: 'Công việc', icon: '📋', perm: 'task.view' },
+  { page: 'customers', label: 'Khách hàng', icon: '👥', perm: 'customer.view' },
+  { page: 'notifications', label: 'Thông báo', icon: '🔔', perm: 'notification.view' },
+  { page: 'audit', label: 'Nhật ký kiểm toán', icon: '🧾', perm: 'audit.view' },
+  { page: 'users', label: 'Người dùng', icon: '⚙️', perm: 'user.manage' },
+];
+
+let state = clone(DATA);
+let currentUserId = 'USR-004';
+let page = 'overview';
+let selectedTaskId = null;
+let flashMsg = '';
+
+function clone(o) { return JSON.parse(JSON.stringify(o)); }
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function nowIso() { return new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'); }
+function badge(cls, text) { return `<span class="badge ${cls}">${esc(text)}</span>`; }
+function nextId(prefix, rows) { return `${prefix}-${String(rows.length + 1).padStart(3, '0')}`; }
+
+function byId(table, key, id) { return state[table].find(r => r[key] === id); }
+function me() { return byId('Users', 'user_id', currentUserId); }
+function roleOf(u) { return byId('Roles', 'role_id', u.role_id).code; }
+function permsOf(u) {
+  return new Set(state.RolePermissions.filter(rp => rp.role_id === u.role_id)
+    .map(rp => byId('Permissions', 'permission_id', rp.permission_id).code));
+}
+function can(code) { return permsOf(me()).has(code); }
+function myRole() { return roleOf(me()); }
+function isCbtd() { return myRole() === 'CBTD'; }
+function activeAssignments(taskId) { return state.TaskAssignees.filter(a => a.task_id === taskId && a.active === 'TRUE'); }
+function assignedHere(taskId) { return activeAssignments(taskId).some(a => a.user_id === currentUserId); }
+function nameOf(userId) { const u = byId('Users', 'user_id', userId); return u ? u.full_name : '—'; }
+function primaryName(taskId) { const a = activeAssignments(taskId).find(x => x.assignment_role === 'primary'); return a ? nameOf(a.user_id) : '—'; }
+function custOf(t) { return byId('Customers', 'customer_id', t.customer_id); }
+function updatesOf(taskId) { return state.TaskUpdates.filter(u => u.task_id === taskId); }
+function approvedPct(taskId) {
+  const v = updatesOf(taskId).filter(u => u.review_status === 'approved').map(u => Number(u.progress_pct));
+  return v.length ? Math.max(...v) : 0;
+}
+function isOverdue(t) { return t.status !== 'completed' && t.due_at < TODAY; }
+
+function visibleTasks() {
+  if (!can('task.view')) return [];
+  return isCbtd() ? state.Tasks.filter(t => assignedHere(t.task_id)) : state.Tasks;
+}
+function visibleCustomers() {
+  if (!can('customer.view')) return [];
+  if (!isCbtd()) return state.Customers;
+  const ids = new Set(visibleTasks().map(t => t.customer_id));
+  return state.Customers.filter(c => ids.has(c.customer_id));
+}
+function scopeText() {
+  return isCbtd() ? 'công việc được giao (chính, hoặc phối hợp đang hoạt động)' : 'toàn bộ phạm vi thí điểm';
+}
+function allowedPages() { return NAV.filter(n => can(n.perm)); }
+
+function notify(userId, eventType, sourceId, message) {
+  state.Notifications.push({
+    notification_id: nextId('NTF', state.Notifications),
+    recipient_user_id: userId, event_type: eventType, source_record_id: sourceId,
+    request_or_event_key: `evt-${eventType}-${sourceId}-${state.Notifications.length + 1}`,
+    message, created_at: nowIso(), read_at: '',
+  });
+}
+function audit(action, entityType, entityId) {
+  const id = nextId('AUD', state.AuditLogs);
+  state.AuditLogs.push({
+    audit_id: id, actor_user_id: currentUserId, actor_email_snapshot: me().email,
+    action, entity_type: entityType, entity_id: entityId,
+    request_or_event_key: `evt-${id.toLowerCase()}`, created_at: nowIso(),
+  });
+}
+
+function tasksTable(list) {
+  if (!list.length) {
+    return `<div class="empty">Bạn chưa có công việc nào được phép xem. Liên hệ KSV phụ trách để được phân công.</div>`;
+  }
+  return `<div class="scroll"><table class="tbl"><thead><tr>
+    <th>Mã</th><th>Công việc</th><th>Khách hàng</th><th>Người chính</th><th>Hạn</th><th>Ưu tiên</th><th>Trạng thái</th><th>Tiến độ đã duyệt</th>
+    </tr></thead><tbody>
+    ${list.map(t => `<tr class="click" data-act="open" data-id="${esc(t.task_id)}">
+      <td>${esc(t.task_code)}</td>
+      <td><strong>${esc(t.title)}</strong></td>
+      <td>${esc(custOf(t) ? custOf(t).name : '')}</td>
+      <td>${esc(primaryName(t.task_id))}</td>
+      <td>${esc(t.due_at)} ${isOverdue(t) ? badge('b-rejected', 'Quá hạn') : ''}</td>
+      <td>${badge('b-' + t.priority, LABEL.priority[t.priority])}</td>
+      <td>${badge('b-' + t.status, LABEL.status[t.status])}</td>
+      <td>${approvedPct(t.task_id)}%</td>
+    </tr>`).join('')}
+    </tbody></table></div>`;
+}
+
+function viewOverview() {
+  const tasks = visibleTasks();
+  const count = s => tasks.filter(t => t.status === s).length;
+  const pending = can('progress.review')
+    ? state.TaskUpdates.filter(u => u.review_status === 'pending' && tasks.some(t => t.task_id === u.task_id)).length
+    : null;
+  const stat = (v, l) => `<div class="stat"><div class="v">${v}</div><div class="l">${esc(l)}</div></div>`;
+  return `
+    <h2>Tổng quan</h2>
+    <p class="sub">Đang xem với vai trò ${esc(LABEL.role[myRole()])}: ${esc(scopeText())}.</p>
+    <div class="stats">
+      ${stat(tasks.length, 'Công việc trong phạm vi')}
+      ${stat(count('not_started'), 'Chưa làm')}
+      ${stat(count('in_progress'), 'Đang thực hiện')}
+      ${stat(count('completed'), 'Đã hoàn thành')}
+      ${stat(tasks.filter(isOverdue).length, 'Quá hạn')}
+      ${stat(pending === null ? '—' : pending, 'Tiến độ chờ duyệt')}
+      ${stat(visibleCustomers().length, 'Khách hàng')}
+    </div>
+    ${(myRole() === 'BGD' || myRole() === 'Admin') ? `
+    <div class="card" style="border-left: 4px solid var(--amber); background: #fffdf5;">
+      <h3 style="margin-top:0; color: var(--amber);">⭐ Bảng điều khiển công việc ưu tiên (R15 - Giám đốc & Admin)</h3>
+      <p class="sub" style="margin-bottom:8px;">Lọc tự động theo Slice R15: Việc khẩn/quan trọng hoặc Quá hạn (&lt; TODAY), chưa hoàn thành.</p>
+      ${tasksTable(tasks.filter(t => (t.priority === 'high' || t.due_at < TODAY) && t.status !== 'completed'))}
+    </div>` : ''}
+    <div class="card"><h3 style="margin-top:0">Công việc gần đây</h3>${tasksTable(tasks.slice(0, 5))}</div>`;
+}
+
+function createTaskForm() {
+  const cbtd = state.Users.filter(u => u.status === 'active' && roleOf(u) === 'CBTD');
+  const cbtdOpts = cbtd.map(u => `<option value="${u.user_id}">${esc(u.full_name)}</option>`).join('');
+  const primary = isCbtd()
+    ? `<input value="${esc(me().full_name)} (bạn)" disabled>`
+    : `<select id="nt-primary">${cbtdOpts}</select>`;
+  const custOpts = visibleCustomers().map(c => `<option value="${c.customer_id}">${esc(c.customer_code)} — ${esc(c.name)}</option>`).join('');
+  return `<div class="card"><h3 style="margin-top:0">Tạo công việc mới</h3>
+    <div class="grid2">
+      <div><label>Tiêu đề<input id="nt-title"></label></div>
+      <div><label>Khách hàng<select id="nt-cust">${custOpts}</select></label></div>
+      <div><label>CBTD chính${primary}</label></div>
+      <div><label>CBTD phối hợp (tùy chọn)<select id="nt-collab"><option value="">— Không —</option>${cbtdOpts}</select></label></div>
+      <div><label>Hạn<input id="nt-due" type="date" value="2026-10-31"></label></div>
+      <div><label>Ưu tiên<select id="nt-prio"><option value="high">Cao</option><option value="normal" selected>Bình thường</option><option value="low">Thấp</option></select></label></div>
+    </div>
+    ${isCbtd() ? '<p class="muted">Bạn chỉ được tạo công việc mà chính bạn là người phụ trách chính (R6).</p>' : ''}
+    <div class="row-actions"><button data-act="create">Tạo công việc</button></div>
+  </div>`;
+}
+
+function viewTasks() {
+  return `<h2>Công việc</h2>
+    <p class="sub">Phạm vi: ${esc(scopeText())}. Bấm một dòng để xem chi tiết.</p>
+    ${can('task.create') ? createTaskForm() : ''}
+    <div class="card">${tasksTable(visibleTasks())}</div>`;
+}
+
+function reviewRow(u) {
+  let action = '';
+  if (u.review_status === 'pending' && can('progress.review')) {
+    action = `<div style="margin-top:8px">
+      <textarea id="cmt-${esc(u.update_id)}" placeholder="Lý do từ chối (bắt buộc khi từ chối)"></textarea>
+      <div class="row-actions">
+        <button data-act="review" data-id="${esc(u.update_id)}" data-decision="approve">Duyệt</button>
+        <button class="danger" data-act="review" data-id="${esc(u.update_id)}" data-decision="reject">Từ chối</button>
+      </div></div>`;
+  }
+  const reviewInfo = u.review_status === 'pending' ? '' :
+    `<br><span class="muted">${esc(nameOf(u.reviewed_by_user_id))} · ${esc(u.reviewed_at)}</span>` +
+    (u.review_comment ? `<br><span class="muted">Ghi chú: ${esc(u.review_comment)}</span>` : '');
+  return `<tr>
+    <td>${esc(u.update_id)}</td>
+    <td><strong>${esc(u.progress_pct)}%</strong></td>
+    <td>${esc(u.narrative)}${action}</td>
+    <td>${esc(nameOf(u.submitted_by_user_id))}</td>
+    <td>${esc(u.submitted_at)}</td>
+    <td>${badge('b-' + u.review_status, LABEL.review[u.review_status])}${reviewInfo}</td>
+  </tr>`;
+}
+
+function viewTask() {
+  const t = byId('Tasks', 'task_id', selectedTaskId);
+  if (!t || !visibleTasks().includes(t)) {
+    return `<div class="empty">Không tìm thấy công việc, hoặc bạn không có quyền xem công việc này.</div>
+      <div class="row-actions"><button class="ghost" data-act="back">← Danh sách công việc</button></div>`;
+  }
+  const c = custOf(t);
+  const assigned = assignedHere(t.task_id);
+  const assignees = activeAssignments(t.task_id).map(a =>
+    `${badge('b-' + a.assignment_role, LABEL.assign[a.assignment_role])} ${esc(nameOf(a.user_id))} <span class="muted">(${esc(a.assignee_email_snapshot)})</span>`
+  ).join('<br>');
+  const ups = updatesOf(t.task_id).slice().reverse();
+  const canTransfer = (myRole() === 'BGD' || myRole() === 'Admin' || myRole() === 'KSV') && t.status !== 'completed';
+  const cbtdCandidates = state.Users.filter(u => u.status === 'active' && roleOf(u) === 'CBTD');
+  const cbtdTransferOpts = cbtdCandidates.map(u => `<option value="${u.user_id}">${esc(u.full_name)}</option>`).join('');
+  const history = ups.length
+    ? `<div class="scroll"><table class="tbl"><thead><tr><th>Mã</th><th>Tiến độ</th><th>Diễn giải</th><th>Người gửi</th><th>Gửi lúc</th><th>Duyệt</th></tr></thead>
+       <tbody>${ups.map(reviewRow).join('')}</tbody></table></div>`
+    : `<div class="empty">Chưa có cập nhật tiến độ.</div>`;
+
+  const canStart = can('task.start') && t.status === 'not_started' && (!isCbtd() || assigned);
+  const canSubmit = can('progress.submit') && t.status !== 'completed' && (!isCbtd() || assigned);
+  const startBtn = canStart ? `<button data-act="start" data-id="${esc(t.task_id)}">Bắt đầu công việc</button>` : '';
+  const submitForm = canSubmit ? `<div class="card" style="margin-top:12px"><h3 style="margin-top:0">Gửi cập nhật tiến độ</h3>
+    <div class="grid2">
+      <div><label>Tiến độ lũy kế (0–100)<input id="pct" type="number" min="0" max="100" step="1" value="${Math.min(100, approvedPct(t.task_id) + 10)}"></label></div>
+      <div><label>Diễn giải<textarea id="narr" placeholder="Nội dung đã làm được"></textarea></label></div>
+    </div>
+    <div class="row-actions"><button data-act="submit" data-id="${esc(t.task_id)}">Gửi chờ duyệt</button></div></div>` : '';
+
+  return `
+    <button class="ghost" data-act="back" style="margin-bottom:12px">← Danh sách công việc</button>
+    <h2>${esc(t.task_code)} · ${esc(t.title)}</h2>
+    <p class="sub">${badge('b-' + t.status, LABEL.status[t.status])} ${badge('b-' + t.priority, LABEL.priority[t.priority])} ${isOverdue(t) ? badge('b-rejected', 'Quá hạn') : ''}</p>
+    <div class="grid2">
+      <div class="card"><h3 style="margin-top:0">Thông tin</h3>
+        <div class="kv">
+          <div>Khách hàng</div><div>${esc(c ? c.name : '')} (${esc(c ? c.customer_code : '')})</div>
+          <div>Hạn xử lý</div><div>${esc(t.due_at)}</div>
+          <div>Mô tả</div><div>${esc(t.description || '—')}</div>
+          <div>Tiến độ đã duyệt</div><div>${approvedPct(t.task_id)}%</div>
+        </div>
+        ${startBtn ? `<div class="row-actions">${startBtn}</div>` : ''}
+      </div>
+      <div class="card"><h3 style="margin-top:0">Phân công</h3>
+        <div>${assignees || '—'}</div>
+        ${canTransfer ? `
+          <div style="margin-top:12px; padding-top:10px; border-top:1px dashed var(--border);">
+            <label style="font-weight:600; font-size:12px;">Chuyển giao CBTD chính (Action R17):</label>
+            <div style="display:flex; gap:6px; margin-top:4px;">
+              <select id="transfer-user" style="font-size:13px;">${cbtdTransferOpts}</select>
+              <button data-act="transfer" data-id="${esc(t.task_id)}" style="padding:4px 10px; font-size:12px;">Chuyển giao</button>
+            </div>
+          </div>` : ''}
+      </div>
+    </div>
+    ${submitForm}
+    <div class="card"><h3 style="margin-top:0">Lịch sử tiến độ</h3>${history}</div>`;
+}
+
+function viewCustomers() {
+  const rows = visibleCustomers();
+  const canMaintainCust = can('customer.maintain');
+  const custForm = canMaintainCust ? `
+    <div class="card" style="margin-bottom:16px;">
+      <h3 style="margin-top:0;">Thêm khách hàng mới (R9 - KSV & Admin)</h3>
+      <div class="grid2">
+        <div><label>Tên khách hàng<input id="nc-name" placeholder="Nguyễn Văn A / Công ty XYZ"></label></div>
+        <div>
+          <label>Loại khách hàng
+            <select id="nc-type" data-act="cust-type-change">
+              <option value="personal">Cá nhân</option>
+              <option value="business">Doanh nghiệp (Công ty)</option>
+            </select>
+          </label>
+        </div>
+        <div id="nc-rep-box" style="display:none;">
+          <label style="color:var(--primary-dark); font-weight:600;">Người đại diện công ty (Show_If R17):
+            <input id="nc-rep" placeholder="Họ tên người đại diện pháp luật">
+          </label>
+        </div>
+        <div><label>Số điện thoại<input id="nc-phone" placeholder="090..."></label></div>
+      </div>
+      <div class="row-actions"><button data-act="create-cust">Thêm khách hàng</button></div>
+    </div>` : '';
+
+  const body = rows.length
+    ? `<div class="scroll"><table class="tbl"><thead><tr><th>Mã KH</th><th>Tên</th><th>Loại</th><th>Đại diện (R17)</th><th>SĐT</th><th>Nhóm</th><th>Công việc liên quan</th></tr></thead><tbody>
+       ${rows.map(c => `<tr><td>${esc(c.customer_code)}</td><td><strong>${esc(c.name)}</strong></td><td>${esc(LABEL.type[c.type])}</td><td>${c.type === 'business' ? esc(c.representative_name || 'Đại diện mẫu') : '—'}</td><td>${esc(c.phone)}</td><td>${esc(LABEL.custStatus[c.status])}</td><td>${visibleTasks().filter(t => t.customer_id === c.customer_id).length}</td></tr>`).join('')}
+       </tbody></table></div>`
+    : `<div class="empty">Chưa có khách hàng nào trong phạm vi của bạn.</div>`;
+  return `<h2>Khách hàng</h2>
+    <p class="sub">Phạm vi: ${esc(scopeText())}. Không hiển thị dư nợ hoặc thông tin tín dụng chi tiết (ngoài phạm vi thí điểm).</p>
+    ${custForm}
+    <div class="card">${body}</div>`;
+}
+
+function viewNotifications() {
+  const rows = state.Notifications.filter(n => n.recipient_user_id === currentUserId).slice().reverse();
+  const body = rows.length
+    ? rows.map(n => `<div class="notif">
+        <div><div class="${n.read_at ? '' : 'unread'}">${esc(n.message)}</div><div class="muted">${esc(n.created_at)}</div></div>
+        ${n.read_at ? badge('b-completed', 'Đã đọc') : `<button class="ghost" data-act="read" data-id="${esc(n.notification_id)}">Đánh dấu đã đọc</button>`}
+      </div>`).join('')
+    : `<div class="empty">Không có thông báo nào.</div>`;
+  return `<h2>Thông báo</h2><p class="sub">Chỉ hiển thị thông báo gửi đến bạn.</p>${body}`;
+}
+
+function viewAudit() {
+  const rows = state.AuditLogs.slice().reverse().map(a => `<tr>
+    <td>${esc(a.created_at)}</td><td>${esc(a.actor_email_snapshot)}</td><td>${esc(a.action)}</td><td>${esc(a.entity_type)} ${esc(a.entity_id)}</td></tr>`).join('');
+  return `<h2>Nhật ký kiểm toán</h2>
+    <p class="sub">Chỉ ghi thêm từ ứng dụng; không sửa hay xóa được.</p>
+    <div class="card"><div class="scroll"><table class="tbl"><thead><tr><th>Thời điểm</th><th>Người thực hiện</th><th>Hành động</th><th>Đối tượng</th></tr></thead>
+    <tbody>${rows}</tbody></table></div></div>`;
+}
+
+function viewUsers() {
+  const rows = state.Users.map(u => `<tr>
+    <td>${esc(u.employee_code)}</td><td>${esc(u.full_name)}</td><td>${esc(u.email)}</td>
+    <td>${esc(LABEL.role[roleOf(u)])}</td><td>${esc(u.org_unit)}</td>
+    <td>${badge('b-' + u.status, u.status === 'active' ? 'Hoạt động' : 'Không hoạt động')}</td></tr>`).join('');
+  return `<h2>Người dùng</h2>
+    <p class="sub">Quản lý người dùng và vai trò (chỉ Admin R16).</p>
+    <div class="row-actions" style="margin-bottom:12px;">
+      <button class="ghost" data-act="backup" title="Sao lưu toàn bộ sổ Google Sheets">💾 Backup dữ liệu sổ (R16)</button>
+      <button class="ghost" data-act="restore" title="Khôi phục trạng thái sổ dữ liệu">🔄 Kiểm tra Restore (R16)</button>
+    </div>
+    <div class="card"><div class="scroll"><table class="tbl"><thead><tr><th>Mã</th><th>Họ tên</th><th>Email</th><th>Vai trò</th><th>Đơn vị</th><th>Trạng thái</th></tr></thead>
+    <tbody>${rows}</tbody></table></div></div>`;
+}
+
+const VIEWS = { overview: viewOverview, tasks: viewTasks, task: viewTask, customers: viewCustomers,
+  notifications: viewNotifications, audit: viewAudit, users: viewUsers };
+
+function renderNav() {
+  const active = page === 'task' ? 'tasks' : page;
+  document.getElementById('nav').innerHTML = allowedPages().map(n =>
+    `<a class="${active === n.page ? 'active' : ''}" data-act="nav" data-page="${n.page}">${n.icon} ${esc(n.label)}</a>`
+  ).join('');
+}
+
+function render() {
+  const main = document.getElementById('main');
+  const nav = document.getElementById('nav');
+  const u = me();
+  if (u.status !== 'active') {
+    nav.innerHTML = '';
+    main.innerHTML = `<div class="denied"><strong>Không có quyền truy cập.</strong>
+      Tài khoản ${esc(u.email)} chưa được kích hoạt trong sổ Users. Liên hệ Admin để được cấp quyền.</div>`;
+    return;
+  }
+  renderNav();
+  const target = page === 'task' ? 'tasks' : page;
+  const allowed = allowedPages().some(n => n.page === target);
+  const body = allowed
+    ? VIEWS[page]()
+    : `<div class="denied">Vai trò ${esc(LABEL.role[myRole()])} không có quyền xem mục này.</div>`;
+  const flash = flashMsg ? `<div class="flash">${esc(flashMsg)}</div>` : '';
+  flashMsg = '';
+  main.innerHTML = flash + body;
+}
+
+const handlers = {
+  nav(d) { page = d.page; selectedTaskId = null; render(); },
+  user() {
+    currentUserId = document.getElementById('userSel').value;
+    page = 'overview'; selectedTaskId = null; flashMsg = ''; render();
+  },
+  open(d) { selectedTaskId = d.id; page = 'task'; render(); },
+  back() { page = 'tasks'; selectedTaskId = null; render(); },
+  reset() { state = clone(DATA); flashMsg = 'Đã đặt lại dữ liệu mẫu.'; render(); },
+  read(d) { byId('Notifications', 'notification_id', d.id).read_at = nowIso(); render(); },
+
+  create() {
+    const title = document.getElementById('nt-title').value.trim();
+    const cust = document.getElementById('nt-cust').value;
+    const primary = isCbtd() ? currentUserId : document.getElementById('nt-primary').value;
+    const collab = document.getElementById('nt-collab').value;
+    const due = document.getElementById('nt-due').value;
+    const prio = document.getElementById('nt-prio').value;
+    if (!title) { flashMsg = 'Nhập tiêu đề công việc.'; return render(); }
+    if (!cust) { flashMsg = 'Chọn khách hàng.'; return render(); }
+    if (!due) { flashMsg = 'Chọn hạn xử lý.'; return render(); }
+    if (collab && collab === primary) { flashMsg = 'Người phối hợp phải khác người chính.'; return render(); }
+
+    const id = nextId('TSK', state.Tasks);
+    const code = `CV-TEST-${id.slice(-3)}`;
+    const ts = nowIso();
+    state.Tasks.push({ task_id: id, task_code: code, customer_id: cust, title, description: '',
+      status: 'not_started', priority: prio, due_at: due, created_by_user_id: currentUserId,
+      completed_at: '', created_at: ts, updated_at: ts });
+    const addAssignee = (userId, role) => state.TaskAssignees.push({
+      assignment_id: nextId('ASG', state.TaskAssignees), task_id: id, user_id: userId,
+      assignee_email_snapshot: byId('Users', 'user_id', userId).email, assignment_role: role, assigned_at: ts, active: 'TRUE' });
+    addAssignee(primary, 'primary');
+    if (collab) addAssignee(collab, 'collaborator');
+    audit('task.create', 'Task', id);
+    audit('task.assign', 'TaskAssignee', state.TaskAssignees.find(a => a.task_id === id).assignment_id);
+    if (primary !== currentUserId) notify(primary, 'task_assigned', id, `Bạn được giao công việc ${code}`);
+    flashMsg = `Đã tạo ${code}.`;
+    render();
+  },
+
+  start(d) {
+    const t = byId('Tasks', 'task_id', d.id);
+    if (t.status !== 'not_started') return render();
+    t.status = 'in_progress';
+    t.updated_at = nowIso();
+    audit('task.start', 'Task', t.task_id);
+    flashMsg = `${t.task_code} chuyển sang Đang thực hiện.`;
+    render();
+  },
+
+  transfer(d) {
+    const t = byId('Tasks', 'task_id', d.id);
+    const newUserId = document.getElementById('transfer-user').value;
+    if (!newUserId) return;
+    const oldPrimary = state.TaskAssignees.find(a => a.task_id === t.task_id && a.assignment_role === 'primary' && a.active === 'TRUE');
+    if (oldPrimary) oldPrimary.active = 'FALSE';
+    
+    const newUser = byId('Users', 'user_id', newUserId);
+    const asgId = nextId('ASG', state.TaskAssignees);
+    state.TaskAssignees.push({
+      assignment_id: asgId,
+      task_id: t.task_id,
+      user_id: newUserId,
+      assignee_email_snapshot: newUser.email,
+      assignment_role: 'primary',
+      assigned_at: nowIso(),
+      active: 'TRUE'
+    });
+    audit('task.transfer', 'Task', t.task_id);
+    notify(newUserId, 'task_assigned', t.task_id, `Bạn được phân công làm người phụ trách chính cho ${t.task_code}`);
+    flashMsg = `Đã chuyển giao ${t.task_code} sang ${newUser.full_name} (Action R17 thành công).`;
+    render();
+  },
+
+  'create-cust'() {
+    const name = document.getElementById('nc-name').value.trim();
+    const type = document.getElementById('nc-type').value;
+    const rep = document.getElementById('nc-rep') ? document.getElementById('nc-rep').value.trim() : '';
+    const phone = document.getElementById('nc-phone').value.trim();
+    if (!name) { flashMsg = 'Vui lòng nhập tên khách hàng.'; return render(); }
+    const id = nextId('CUS', state.Customers);
+    const code = `KH-TEST-${id.slice(-3)}`;
+    const ts = nowIso();
+    state.Customers.push({
+      customer_id: id,
+      customer_code: code,
+      name,
+      type,
+      phone: phone || '0900000000',
+      status: 'new',
+      representative_name: rep,
+      created_at: ts,
+      updated_at: ts
+    });
+    audit('customer.create', 'Customer', id);
+    flashMsg = `Đã thêm khách hàng ${code} - ${name} thành công.`;
+    render();
+  },
+
+  backup() {
+    audit('system.backup', 'Workbook', 'ALL');
+    flashMsg = '✅ Sao lưu sổ dữ liệu Google Sheets thành công (Mô phỏng handler R16).';
+    render();
+  },
+
+  restore() {
+    flashMsg = 'ℹ️ Thao tác Restore kiểm tra thành công trên môi trường thử nghiệm tổng hợp (R16/U7).';
+    render();
+  },
+
+  submit(d) {
+    const t = byId('Tasks', 'task_id', d.id);
+    const pct = document.getElementById('pct').value.trim();
+    const narr = document.getElementById('narr').value.trim();
+    if (!/^\d+$/.test(pct) || Number(pct) > 100) { flashMsg = 'Tiến độ phải là số nguyên từ 0 đến 100.'; return render(); }
+    if (!narr) { flashMsg = 'Nhập nội dung diễn giải.'; return render(); }
+    const id = nextId('UPD', state.TaskUpdates);
+    state.TaskUpdates.push({ update_id: id, task_id: t.task_id, progress_pct: String(Number(pct)), narrative: narr,
+      submitted_by_user_id: currentUserId, submitted_by_email_snapshot: me().email, submitted_at: nowIso(),
+      review_status: 'pending', reviewed_by_user_id: '', reviewed_by_email_snapshot: '', reviewed_at: '', review_comment: '' });
+    audit('progress.submit', 'TaskUpdate', id);
+    state.Users
+      .filter(u => u.status === 'active' && u.user_id !== currentUserId && permsOf(u).has('progress.review'))
+      .forEach(u => notify(u.user_id, 'progress_submitted', id, `Có cập nhật tiến độ chờ duyệt ${t.task_code}`));
+    flashMsg = 'Đã gửi tiến độ, đang chờ duyệt.';
+    render();
+  },
+
+  review(d) {
+    if (!can('progress.review')) return render();
+    const u = byId('TaskUpdates', 'update_id', d.id);
+    const t = byId('Tasks', 'task_id', u.task_id);
+    const ts = nowIso();
+    if (d.decision === 'reject') {
+      const cmt = document.getElementById('cmt-' + d.id).value.trim();
+      if (!cmt) { flashMsg = 'Từ chối cần ghi lý do.'; return render(); }
+      u.review_status = 'rejected';
+      u.review_comment = cmt;
+    } else {
+      u.review_status = 'approved';
+    }
+    Object.assign(u, { reviewed_by_user_id: currentUserId, reviewed_by_email_snapshot: me().email, reviewed_at: ts });
+    audit(d.decision === 'approve' ? 'progress.approve' : 'progress.reject', 'TaskUpdate', u.update_id);
+    if (u.review_status === 'approved' && u.progress_pct === '100' && t.status !== 'completed') {
+      t.status = 'completed';
+      t.completed_at = ts;
+      audit('task.auto_complete', 'Task', t.task_id);
+    }
+    notify(u.submitted_by_user_id,
+      d.decision === 'approve' ? 'progress_approved' : 'progress_rejected', u.update_id,
+      d.decision === 'approve' ? `Cập nhật tiến độ ${t.task_code} đã được duyệt`
+        : `Cập nhật tiến độ ${t.task_code} bị từ chối; xem lý do trong ứng dụng`);
+    flashMsg = d.decision === 'approve' ? 'Đã duyệt tiến độ.' : 'Đã từ chối tiến độ.';
+    render();
+  },
+};
+
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]');
+  if (!el || el.tagName === 'SELECT' || !handlers[el.dataset.act]) return;
+  handlers[el.dataset.act]({ ...el.dataset });
+});
+document.addEventListener('change', e => {
+  if (e.target.dataset.act === 'user') handlers.user();
+  if (e.target.id === 'nc-type') {
+    const repBox = document.getElementById('nc-rep-box');
+    if (repBox) repBox.style.display = e.target.value === 'business' ? 'block' : 'none';
+  }
+});
+
+document.getElementById('userSel').innerHTML = state.Users.map(u =>
+  `<option value="${esc(u.user_id)}">${esc(u.full_name)} — ${esc(roleOf(u))}${u.status !== 'active' ? ' (không hoạt động)' : ''}</option>`
+).join('');
+document.getElementById('userSel').value = currentUserId;
+render();
+</script>
+</body>
+</html>

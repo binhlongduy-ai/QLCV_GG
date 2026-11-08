@@ -1,0 +1,4 @@
+customer_id,customer_code,name,type,phone,status,created_at,updated_at
+CUS-001,KH-TEST-001,Khách hàng mẫu A,personal,0900000001,managed,2026-10-13T07:52:00Z,2026-10-13T07:52:00Z
+CUS-002,KH-TEST-002,Công ty mẫu B,business,0900000002,new,2026-10-13T07:52:00Z,2026-10-13T07:52:00Z
+CUS-003,KH-TEST-003,Khách hàng mẫu C,personal,0900000003,managed,2026-10-13T07:52:00Z,2026-10-13T07:52:00Z

@@ -1,0 +1,5 @@
+notification_id,recipient_user_id,event_type,source_record_id,request_or_event_key,message,created_at,read_at
+NTF-001,USR-004,task_assigned,ASG-001,evt-assign-ASG-001,Bạn được giao công việc CV-TEST-001,2026-10-13T08:10:00Z,2026-10-13T08:15:00Z
+NTF-002,USR-003,progress_submitted,UPD-001,evt-submit-UPD-001,Có cập nhật tiến độ chờ duyệt CV-TEST-001,2026-10-13T09:00:00Z,
+NTF-003,USR-004,progress_approved,UPD-001,evt-review-UPD-001,Cập nhật tiến độ CV-TEST-001 đã được duyệt,2026-10-13T09:30:00Z,
+NTF-004,USR-004,progress_rejected,UPD-003,evt-review-UPD-003,Cập nhật tiến độ CV-TEST-003 bị từ chối; xem lý do trong ứng dụng,2026-10-11T11:00:00Z,

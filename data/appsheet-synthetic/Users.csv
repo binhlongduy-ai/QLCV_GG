@@ -1,0 +1,8 @@
+user_id,email,employee_code,full_name,role_id,org_unit,status,created_at,updated_at
+USR-001,admin@example.com,NV-TEST-001,Quản trị mẫu,ROL-ADMIN,DV-THU-NGHIEM,active,2026-10-13T07:50:00Z,2026-10-13T07:50:00Z
+USR-002,bgd@example.com,NV-TEST-002,Ban giám đốc mẫu,ROL-BGD,DV-THU-NGHIEM,active,2026-10-13T07:50:00Z,2026-10-13T07:50:00Z
+USR-003,ksv01@example.com,NV-TEST-003,KSV mẫu 01,ROL-KSV,DV-THU-NGHIEM,active,2026-10-13T07:50:00Z,2026-10-13T07:50:00Z
+USR-004,cbtd01@example.com,NV-TEST-004,CBTD mẫu 01,ROL-CBTD,DV-THU-NGHIEM,active,2026-10-13T07:50:00Z,2026-10-13T07:50:00Z
+USR-005,cbtd02@example.com,NV-TEST-005,CBTD mẫu 02,ROL-CBTD,DV-THU-NGHIEM,active,2026-10-13T07:50:00Z,2026-10-13T07:50:00Z
+USR-006,cbtd03@example.com,NV-TEST-006,CBTD mẫu 03,ROL-CBTD,DV-THU-NGHIEM,active,2026-10-13T07:50:00Z,2026-10-13T07:50:00Z
+USR-007,cbtd-inactive@example.com,NV-TEST-007,CBTD không hoạt động mẫu,ROL-CBTD,DV-THU-NGHIEM,inactive,2026-10-13T07:50:00Z,2026-10-13T07:50:00Z

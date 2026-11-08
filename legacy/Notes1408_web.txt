@@ -1,0 +1,7 @@
+Công việc sửa:
+0. Nội dung Công việc nên từ List cơ bản NV
+1. có trường CBTD1/CBTD2 (người hợp công); chỉ được chọn từ Tên Cán bộ trong Người dùng, điều kiện là CBTD
+2. Công việc phải gắn với KH;
+3. KS/GĐ/Admin: thêm Nhật ký/Công việc lọc theo 2 tiêu chí CBTD và Khách hàng;
+4. Dashoad: cũng tương tự phần 3
+5. Yêu cầu cụ thể Dashboard từ Ban giám đốc

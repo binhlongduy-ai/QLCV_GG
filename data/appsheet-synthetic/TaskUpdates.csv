@@ -1,0 +1,5 @@
+update_id,task_id,progress_pct,narrative,submitted_by_user_id,submitted_by_email_snapshot,submitted_at,review_status,reviewed_by_user_id,reviewed_by_email_snapshot,reviewed_at,review_comment
+UPD-001,TSK-001,30,Đã thu thập giấy tờ cơ bản mẫu,USR-004,cbtd01@example.com,2026-10-13T09:00:00Z,approved,USR-003,ksv01@example.com,2026-10-13T09:30:00Z,Đạt
+UPD-002,TSK-001,60,Đang đối chiếu hồ sơ mẫu,USR-005,cbtd02@example.com,2026-10-13T10:00:00Z,pending,,,,
+UPD-003,TSK-003,80,Còn thiếu một chứng từ mẫu,USR-004,cbtd01@example.com,2026-10-11T09:00:00Z,rejected,USR-003,ksv01@example.com,2026-10-11T11:00:00Z,Cần bổ sung chứng từ
+UPD-004,TSK-003,100,Hoàn thành hồ sơ mẫu,USR-004,cbtd01@example.com,2026-10-12T09:00:00Z,approved,USR-003,ksv01@example.com,2026-10-12T10:00:00Z,Đạt

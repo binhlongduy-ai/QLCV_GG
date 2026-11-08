@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <meta name="description" content="Hệ thống Quản lý Công việc Cán bộ Tín dụng - QLCV CBTD">
+  <title>QLCV CBTD – Quản lý Công việc Cán bộ Tín dụng</title>
+  <base target="_top">
+  <!-- CSS nhúng inline để GAS serve qua template -->
+  <style><?!= include('index_css') ?></style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+
+  <meta name="theme-color" content="#1e88e5">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="QLCV CBTD">
+  <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='32' fill='%231e88e5'/><text x='96' y='130' font-size='110' text-anchor='middle' fill='white' font-family='Arial'>QL</text></svg>">
+  <script>
+    window.AUTH_USER_EMAIL = JSON.parse(
+      '<?!= JSON.stringify(String(userEmail || "").replace(/\\/g, "\\\\").replace(/"/g, "\\\"") + "") ?>'
+    );
+  </script>
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!--  TOAST CONTAINER                                                       -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!--  LOGIN PAGE                                                            -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <div class="login-wrapper" id="loginPage">
+    <div class="login-card">
+      <div class="logo">
+        <div class="logo-icon">📋</div>
+        <h1>QLCV CBTD</h1>
+        <p class="subtitle">Hệ thống Quản lý Công việc Cán bộ Tín dụng</p>
+      </div>
+
+      <div class="login-error" id="loginError"></div>
+
+      <form id="loginForm" onsubmit="return handleLogin(event)">
+        <div class="form-group" id="loginEmailGroup">
+          <label for="loginEmail">Email đăng nhập</label>
+          <input type="email" id="loginEmail" placeholder="vd: admin@example.com" autocomplete="email">
+        </div>
+        <p class="login-google-note" id="loginGoogleNote" style="display:none; font-size:0.85rem; color:#6B7280; margin-bottom:16px;">
+          Hệ thống sử dụng tài khoản Google bạn đang đăng nhập trên trình duyệt.
+          Bấm "Đăng nhập" để tiếp tục — nếu tài khoản chưa được cấp quyền, hệ thống sẽ báo lỗi.
+        </p>
+        <button type="submit" class="btn-login" id="loginBtn">
+          Đăng nhập
+        </button>
+      </form>
+
+      <p style="text-align:center; margin-top:20px; font-size:0.78rem; color:#9CA3AF;" id="loginDemoHint">
+        Demo: admin@example.com · cbtd01@example.com · cbtd02@example.com · ksv01@example.com · bgd01@example.com
+      </p>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!--  APP LAYOUT                                                            -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <div class="app-layout" id="appLayout">
+
+    <!-- ─── SIDEBAR ──────────────────────────────────────────────────────── -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-icon">📋</div>
+        <div class="brand-text">
+          QLCV CBTD
+          <small>Quản lý Công việc Tín dụng</small>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-label">Tổng quan</div>
+        <div class="nav-item active" data-page="dashboard" onclick="navigateTo('dashboard')">
+          <span class="nav-icon">📊</span> Dashboard
+        </div>
+
+        <div class="nav-label">Quản lý Nghiệp vụ</div>
+        <div class="nav-item" data-page="congviec" onclick="navigateTo('congviec')">
+          <span class="nav-icon">📝</span> Công việc
+          <span class="badge" id="badgeCongViec" style="display:none"></span>
+        </div>
+        <div class="nav-item" data-page="nhatky" onclick="navigateTo('nhatky')">
+          <span class="nav-icon">📓</span> Nhật ký Tiến độ
+          <span class="badge" id="badgeNhatKy" style="display:none"></span>
+        </div>
+        <div class="nav-item" data-page="khachhang" onclick="navigateTo('khachhang')">
+          <span class="nav-icon">👥</span> Khách hàng
+        </div>
+
+        <div class="nav-label" id="navAdminLabel" style="display:none">Quản trị</div>
+        <div class="nav-item" data-page="nguoidung" id="navNguoiDung" style="display:none" onclick="navigateTo('nguoidung')">
+          <span class="nav-icon">⚙️</span> Người dùng
+        </div>
+        <div class="nav-item" data-page="csdl" id="navCSDL" style="display:none" onclick="navigateTo('csdl')">
+          <span class="nav-icon">🗄️</span> Cơ sở dữ liệu
+        </div>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-info">
+          <div class="user-avatar" id="userAvatar">A</div>
+          <div class="user-details">
+            <div class="user-name" id="userDisplayName">Nguyễn Văn Quản Trị</div>
+            <div class="user-sub" id="userEmail">admin@example.com</div>
+            <div class="user-role" id="userRole">Admin</div>
+          </div>
+        </div>
+        <button class="btn-logout" id="btnInstallPWA" onclick="promptInstallPWA()" style="display:none;background:#f0f7ff;color:#1e88e5;margin-bottom:8px">📲 Cài đặt ứng dụng</button>
+        <button class="btn-logout" onclick="handleLogout()">🚪 Đăng xuất</button>
+      </div>
+    </aside>
+
+    <!-- ─── MAIN CONTENT ─────────────────────────────────────────────────── -->
+    <main class="main-content">
+
+      <!-- ═══ DASHBOARD ═══ -->
+      <section class="page-section active" id="page-dashboard">
+        <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">
+          <div>
+            <h2>📊 Dashboard Quản trị & Điều hành</h2>
+            <p>Theo dõi tiến độ, hiệu suất xử lý hồ sơ tín dụng và phân bổ rủi ro khách hàng</p>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-outline" onclick="exportDashboardExcel()" title="Xuất báo cáo Excel cho BGĐ">
+              <span>📥</span> Xuất Excel
+            </button>
+            <button class="btn btn-outline" onclick="refreshDashboard()" title="Làm mới dữ liệu">
+              <span>🔄</span> Làm mới
+            </button>
+          </div>
+        </div>
+
+        <div class="page-body">
+
+          <!-- Dashboard Filter Bar (Lọc đa tiêu chí theo CBTD & Khách hàng) -->
+          <div class="dashboard-filter-bar">
+            <div class="filter-group">
+              <label for="selectFilterDashboardCBTD">👤 Cán bộ Tín dụng:</label>
+              <select id="selectFilterDashboardCBTD" class="form-control" onchange="onDashboardFilterChange()">
+                <option value="">Tất cả CBTD</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label for="selectFilterDashboardKH">🏢 Khách hàng:</label>
+              <select id="selectFilterDashboardKH" class="form-control" onchange="onDashboardFilterChange()">
+                <option value="">Tất cả Khách hàng</option>
+              </select>
+            </div>
+            <button class="btn btn-sm btn-outline" onclick="resetDashboardFilter()">🔄 Đặt lại bộ lọc</button>
+            <div id="dashboardFilterNotice" class="filter-notice" style="display:none"></div>
+          </div>
+
+          <!-- Stats Grid Mở rộng -->
+          <div class="stats-grid" id="statsGrid">
+            <div class="stat-card blue">
+              <div class="stat-icon">📋</div>
+              <div class="stat-value" id="statTongCV">–</div>
+              <div class="stat-label">Tổng công việc</div>
+            </div>
+            <div class="stat-card green">
+              <div class="stat-icon">✅</div>
+              <div class="stat-value" id="statHoanThanh">–</div>
+              <div class="stat-label">Đã hoàn thành</div>
+            </div>
+            <div class="stat-card teal">
+              <div class="stat-icon">🎯</div>
+              <div class="stat-value" id="statTyLeDungHan">–%</div>
+              <div class="stat-label">Tỷ lệ đúng hạn</div>
+            </div>
+            <div class="stat-card yellow">
+              <div class="stat-icon">⏳</div>
+              <div class="stat-value" id="statChuaDuyet">–</div>
+              <div class="stat-label">Nhật ký chờ duyệt</div>
+            </div>
+            <div class="stat-card red">
+              <div class="stat-icon">⚠️</div>
+              <div class="stat-value" id="statTreHan">–</div>
+              <div class="stat-label">Công việc trễ hạn</div>
+            </div>
+            <div class="stat-card purple">
+              <div class="stat-icon">👥</div>
+              <div class="stat-value" id="statTongKH">–</div>
+              <div class="stat-label">Tổng khách hàng</div>
+            </div>
+          </div>
+
+          <!-- Charts Grid -->
+          <div class="charts-grid">
+            <div class="card">
+              <div class="card-header"><h3>📊 Phân bổ Công việc theo Trạng thái</h3></div>
+              <div class="card-body">
+                <div class="chart-container">
+                  <canvas id="chartTrangThai"></canvas>
+                  <p id="emptyChartTrangThai" class="empty-state" style="display:none">📊 Chưa có dữ liệu trạng thái</p>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-header"><h3>📊 Khối lượng Công việc theo Cán bộ (CBTD1 & CBTD2)</h3></div>
+              <div class="card-body">
+                <div class="chart-container">
+                  <canvas id="chartCBTD"></canvas>
+                  <p id="emptyChartCBTD" class="empty-state" style="display:none">📊 Chưa có dữ liệu CBTD</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bảng phân bổ Nhóm nợ & Loại KH cho BGĐ -->
+          <div class="charts-grid" style="margin-top:20px">
+            <div class="card">
+              <div class="card-header"><h3>🏢 Phân bổ Khách hàng theo Loại KH</h3></div>
+              <div class="card-body">
+                <div id="containerLoaiKHStats" class="kpi-mini-grid"></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-header"><h3>⚠️ Phân bổ Khách hàng theo Nhóm Nợ</h3></div>
+              <div class="card-body">
+                <div id="containerNhomNoStats" class="kpi-mini-grid"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Công việc trễ hạn -->
+          <div class="card" id="cardTreHan" style="margin-top:20px">
+            <div class="card-header"><h3>⚠️ Danh sách Công việc Trễ hạn cần xử lý gấp</h3></div>
+            <div class="card-body">
+              <div class="table-wrapper">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Mã CV</th><th>Khách hàng</th><th>Nội dung</th><th>CBTD phụ trách</th><th>Hạn chót</th><th>Mức độ</th><th>Trạng thái</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tableTreHan"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ CÔNG VIỆC ═══ -->
+      <section class="page-section" id="page-congviec">
+        <div class="page-header">
+          <h2>📝 Quản lý Công việc Tín dụng</h2>
+          <p>Theo dõi, giao việc và phối hợp xử lý hồ sơ khách hàng doanh nghiệp & cá nhân</p>
+        </div>
+        <div class="page-body">
+          <div class="toolbar">
+            <div class="search-box">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="searchCongViec" placeholder="Tìm theo mã CV, nội dung, KH, CBTD..." oninput="filterCongViec()">
+            </div>
+            <select class="form-control" style="width:auto;min-width:140px" id="filterCongViecCBTD" onchange="filterCongViec()">
+              <option value="">Tất cả CBTD</option>
+            </select>
+            <select class="form-control" style="width:auto;min-width:150px" id="filterCongViecKH" onchange="filterCongViec()">
+              <option value="">Tất cả Khách hàng</option>
+            </select>
+            <select class="form-control" style="width:auto;min-width:130px" id="filterMucDo" onchange="filterCongViec()">
+              <option value="">Tất cả mức độ</option>
+              <option value="Ưu tiên">Ưu tiên</option>
+              <option value="Bình thường">Bình thường</option>
+              <option value="Khác">Khác</option>
+            </select>
+            <select class="form-control" style="width:auto;min-width:140px" id="filterTrangThai" onchange="filterCongViec()">
+              <option value="">Tất cả trạng thái</option>
+              <option value="Mới giao">Mới giao</option>
+              <option value="Đang xử lý">Đang xử lý</option>
+              <option value="Chờ duyệt">Chờ duyệt</option>
+              <option value="Hoàn thành">Hoàn thành</option>
+              <option value="Từ chối">Từ chối</option>
+            </select>
+            <button class="btn btn-primary" onclick="openModalCreateCongViec()">➕ Thêm CV</button>
+          </div>
+
+          <!-- Drill-down banner: hiển thị khi có filter từ Dashboard -->
+          <div id="drillDownBanner" style="display:none"></div>
+
+          <div class="card">
+            <div class="card-body" style="padding:0">
+              <div class="table-wrapper">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Mã CV</th><th>Khách hàng</th><th>Nội dung công việc</th><th>CBTD phụ trách</th><th>Hạn chót</th><th>Mức độ</th><th>Trạng thái</th><th>Diễn giải</th><th>Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tableCongViec"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ NHẬT KÝ ═══ -->
+      <section class="page-section" id="page-nhatky">
+        <div class="page-header">
+          <h2>📓 Nhật ký Tiến độ</h2>
+          <p>Lịch sử cập nhật tiến độ công việc hàng ngày (Chỉ thêm mới - Append Only) & phê duyệt KSV</p>
+        </div>
+        <div class="page-body">
+          <div class="toolbar">
+            <div class="search-box">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="searchNhatKy" placeholder="Tìm theo mã NK, mã CV, tiến độ..." oninput="filterNhatKy()">
+            </div>
+            <select class="form-control" style="width:auto;min-width:140px" id="filterNhatKyCBTD" onchange="filterNhatKy()">
+              <option value="">Tất cả CBTD</option>
+            </select>
+            <select class="form-control" style="width:auto;min-width:150px" id="filterNhatKyKH" onchange="filterNhatKy()">
+              <option value="">Tất cả Khách hàng</option>
+            </select>
+            <select class="form-control" style="width:auto;min-width:140px" id="filterDuyet" onchange="filterNhatKy()">
+              <option value="">Tất cả duyệt</option>
+              <option value="chua">Chưa duyệt</option>
+              <option value="da">Đã duyệt</option>
+            </select>
+            <button class="btn btn-primary" id="btnAddNhatKy" onclick="openModalCreateNhatKy()">➕ Thêm NK</button>
+          </div>
+
+          <div class="card">
+            <div class="card-body" style="padding:0">
+              <div class="table-wrapper">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Mã NK</th><th>Mã CV</th><th>Khách hàng</th><th>Nội dung tiến độ</th><th>Thời gian</th><th>KSV Duyệt</th><th>TG Duyệt</th><th>Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tableNhatKy"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ KHÁCH HÀNG ═══ -->
+      <section class="page-section" id="page-khachhang">
+        <div class="page-header">
+          <h2>👥 Quản lý Khách hàng</h2>
+          <p>Danh mục khách hàng doanh nghiệp & cá nhân theo phân loại nhóm nợ</p>
+        </div>
+        <div class="page-body">
+          <div class="toolbar">
+            <div class="search-box">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="searchKhachHang" placeholder="Tìm theo mã KH, tên, nhóm..." oninput="filterKhachHang()">
+            </div>
+            <select class="form-control" style="width:auto;min-width:150px" id="filterLoaiKH" onchange="filterKhachHang()">
+              <option value="">Tất cả loại KH</option>
+              <option value="Đang phát triển">Đang phát triển</option>
+              <option value="Quản lý">Quản lý</option>
+              <option value="Xử lý nợ">Xử lý nợ</option>
+            </select>
+            <select class="form-control" style="width:auto;min-width:150px" id="filterNhomNo" onchange="filterKhachHang()">
+              <option value="">Tất cả nhóm nợ</option>
+              <option value="Chưa dư nợ">Chưa dư nợ</option>
+              <option value="Nhóm 1">Nhóm 1</option>
+              <option value="Nhóm 2">Nhóm 2</option>
+              <option value="Nhóm 3">Nhóm 3</option>
+              <option value="Nhóm 5">Nhóm 5</option>
+              <option value="XLRR">XLRR</option>
+            </select>
+            <button class="btn btn-primary" onclick="openModal('modalKhachHang')">➕ Thêm KH</button>
+            <button class="btn btn-success" onclick="openModal('modalImportKH')">📥 Import XLSX</button>
+          </div>
+
+          <div class="card">
+            <div class="card-body" style="padding:0">
+              <div class="table-wrapper">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Mã KH</th><th>Tên khách hàng</th><th>Nhóm KH</th><th>Loại KH</th><th>Nhóm nợ</th><th>Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tableKhachHang"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ NGƯỜI DÙNG (Admin only) ═══ -->
+      <section class="page-section" id="page-nguoidung">
+        <div class="page-header">
+          <h2>⚙️ Quản lý Người dùng & Phân quyền</h2>
+          <p>Danh sách tài khoản cán bộ chi nhánh và phân quyền truy cập</p>
+        </div>
+        <div class="page-body">
+          <div class="toolbar">
+            <div class="search-box">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="searchNguoiDung" placeholder="Tìm theo email, tên cán bộ, role..." oninput="filterNguoiDung()">
+            </div>
+            <button class="btn btn-primary" onclick="openModal('modalNguoiDung')">➕ Thêm User</button>
+            <button class="btn btn-success" onclick="openModal('modalImportND')">📥 Import XLSX</button>
+          </div>
+
+          <div class="card">
+            <div class="card-body" style="padding:0">
+              <div class="table-wrapper">
+                <table class="data-table">
+                  <thead>
+                    <tr><th>Email</th><th>Tên cán bộ</th><th>Role</th><th>Thao tác</th></tr>
+                  </thead>
+                  <tbody id="tableNguoiDung"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ CƠ SỞ DỮ LIỆU (Admin only) ═══ -->
+      <section class="page-section" id="page-csdl">
+        <div class="page-header">
+          <h2>🗄️ Cơ sở dữ liệu — DB_QLCV_CBTD</h2>
+          <p>Đồng bộ, tải lại và kiểm tra tính toàn vẹn dữ liệu hệ thống</p>
+        </div>
+        <div class="page-body">
+
+          <div class="db-actions-grid">
+
+            <!-- 1. Update dữ liệu App/Web -> DB -->
+            <div class="card db-action-card">
+              <div class="card-header"><h3>🔄 Cập nhật dữ liệu vào DB</h3></div>
+              <div class="card-body">
+                <p class="db-action-desc">
+                  Đẩy toàn bộ dữ liệu đang có trên App/Web (Công việc, Khách hàng,
+                  Người dùng, Nhật ký đang tải trong bộ nhớ trình duyệt) lên
+                  <strong>DB_QLCV_CBTD</strong>. Dòng đã tồn tại sẽ được
+                  cập nhật, dòng mới sẽ được thêm. Không dòng nào bị xóa khỏi DB.
+                </p>
+                <button class="btn btn-primary" id="btnSyncToDb" onclick="syncDataToDb()">
+                  🔄 Đồng bộ ngay
+                </button>
+                <div class="db-result" id="resultSyncToDb"></div>
+              </div>
+            </div>
+
+            <!-- 2. Load lại toàn bộ dữ liệu -->
+            <div class="card db-action-card">
+              <div class="card-header"><h3>♻️ Load lại toàn bộ dữ liệu</h3></div>
+              <div class="card-body">
+                <p class="db-action-desc">
+                  Xóa bộ nhớ đệm (cache) hiện tại trên App/Web và tải lại
+                  <strong>toàn bộ</strong> dữ liệu mới nhất từ DB_QLCV_CBTD
+                  (Dashboard, Công việc, Nhật ký, Khách hàng, Người dùng).
+                </p>
+                <button class="btn btn-primary" id="btnReloadAll" onclick="reloadAllData()">
+                  ♻️ Tải lại toàn bộ
+                </button>
+                <div class="db-result" id="resultReloadAll"></div>
+              </div>
+            </div>
+
+            <!-- 3. Kiểm tra kết nối & toàn vẹn -->
+            <div class="card db-action-card">
+              <div class="card-header"><h3>🩺 Kiểm tra kết nối &amp; toàn vẹn DB</h3></div>
+              <div class="card-body">
+                <p class="db-action-desc">
+                  Kiểm tra kết nối tới DB_QLCV_CBTD, xác minh đủ 4 sheet
+                  (Users, CongViec, NhatKy, KhachHang), kiểm tra CBTD1/CBTD2 hợp lệ,
+                  phát hiện mã trùng lặp và tham chiếu dữ liệu bị "mồ côi".
+                </p>
+                <button class="btn btn-primary" id="btnCheckIntegrity" onclick="checkDbIntegrity()">
+                  🩺 Kiểm tra ngay
+                </button>
+                <div class="db-result" id="resultCheckIntegrity"></div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!--  MODALS                                                                -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+  <!-- Modal: Thêm Công việc -->
+  <div class="modal-overlay" id="modalCongViec">
+    <div class="modal" style="max-width:680px">
+      <div class="modal-header">
+        <h3>➕ Giao việc / Thêm Công việc mới</h3>
+        <button class="modal-close" onclick="closeModal('modalCongViec')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group">
+            <label>Mã công việc (Tự động tạo)</label>
+            <input type="text" class="form-control" id="frmCV_MaCV" placeholder="VD: CV008" readonly>
+          </div>
+          <div class="form-group">
+            <label>Khách hàng <span style="color:var(--danger)">*</span></label>
+            <select class="form-control" id="frmCV_MaKH">
+              <option value="">-- Chọn khách hàng --</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Danh mục công việc chuẩn (Chọn nhanh)</label>
+          <select class="form-control" id="frmCV_NoiDungMau" onchange="onSelectNoiDungMau()">
+            <option value="">-- Chọn danh mục công việc chuẩn CBTD --</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Nội dung chi tiết công việc <span style="color:var(--danger)">*</span></label>
+          <textarea class="form-control" id="frmCV_NoiDung" placeholder="Mô tả cụ thể mục tiêu, hồ sơ, phương án cần thực hiện..."></textarea>
+        </div>
+
+        <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group">
+            <label>CBTD 1 (Chủ trì / Trách nhiệm chính) <span style="color:var(--danger)">*</span></label>
+            <select class="form-control" id="frmCV_CBTD1">
+              <option value="">-- Chọn CBTD 1 --</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>CBTD 2 (Hợp công / Phối hợp)</label>
+            <select class="form-control" id="frmCV_CBTD2">
+              <option value="">-- Không có cán bộ hợp công --</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+          <div class="form-group">
+            <label>Hạn chót hoàn thành</label>
+            <input type="datetime-local" class="form-control" id="frmCV_HanChot">
+          </div>
+          <div class="form-group">
+            <label>Mức độ ưu tiên</label>
+            <select class="form-control" id="frmCV_MucDo">
+              <option value="Bình thường">Bình thường</option>
+              <option value="Ưu tiên">Ưu tiên</option>
+              <option value="Khác">Khác</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Trạng thái</label>
+            <select class="form-control" id="frmCV_TrangThai">
+              <option value="Mới giao">Mới giao</option>
+              <option value="Đang xử lý">Đang xử lý</option>
+              <option value="Chờ duyệt">Chờ duyệt</option>
+              <option value="Hoàn thành">Hoàn thành</option>
+              <option value="Từ chối">Từ chối</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Diễn giải / Thuyết minh ban đầu</label>
+          <textarea class="form-control" id="frmCV_DienGiai" placeholder="Nhập diễn giải ban đầu hoặc ghi chú bổ sung..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('modalCongViec')">Hủy</button>
+        <button class="btn btn-primary" onclick="submitCongViec()">💾 Lưu Công việc</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Cập nhật Diễn giải Công việc -->
+  <div class="modal-overlay" id="modalDienGiai">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>📝 Cập nhật Diễn giải Công việc</h3>
+        <button class="modal-close" onclick="closeModal('modalDienGiai')">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="frmDG_MaCV">
+        <div class="form-group">
+          <label>Công việc:</label>
+          <div id="frmDG_Info" style="padding:10px 14px;background:var(--bg);border-radius:var(--radius-xs);font-size:0.9rem"></div>
+        </div>
+        <div class="form-group">
+          <label>Nội dung Diễn giải (CBTD có thể cập nhật):</label>
+          <textarea class="form-control" id="frmDG_DienGiai" style="min-height:130px" placeholder="Nhập nội dung diễn giải công việc, tình hình triển khai..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('modalDienGiai')">Hủy</button>
+        <button class="btn btn-primary" onclick="submitUpdateDienGiai()">💾 Cập nhật Diễn giải</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Thêm Nhật ký -->
+  <div class="modal-overlay" id="modalNhatKyForm">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>➕ Thêm Nhật ký Tiến độ (Append Only)</h3>
+        <button class="modal-close" onclick="closeModal('modalNhatKyForm')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Mã nhật ký (Tự động tạo)</label>
+          <input type="text" class="form-control" id="frmNK_MaNK" placeholder="VD: NK006" readonly>
+        </div>
+        <div class="form-group">
+          <label>Công việc áp dụng <span style="color:var(--danger)">*</span></label>
+          <select class="form-control" id="frmNK_MaCV">
+            <option value="">-- Chọn công việc --</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Nội dung tiến độ thực hiện <span style="color:var(--danger)">*</span></label>
+          <textarea class="form-control" id="frmNK_TienDo" style="min-height:120px" placeholder="Mô tả kết quả làm việc thực tế, tiến trình hồ sơ, vướng mắc phát sinh..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('modalNhatKyForm')">Hủy</button>
+        <button class="btn btn-primary" onclick="submitNhatKy()">💾 Lưu Nhật ký</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Xem Nhật ký theo công việc (drill-down 2 cấp) -->
+  <div class="modal-overlay" id="modalNhatKy" onclick="if(event.target===this) closeModalNhatKy()">
+    <div class="modal" style="max-width:760px">
+      <div class="modal-header">
+        <h3 id="modalNhatKyTitle">📜 Nhật ký công việc</h3>
+        <button class="modal-close" onclick="closeModalNhatKy()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="color:#666;margin-bottom:12px;font-size:0.9rem">Lịch sử cập nhật tiến độ — mới nhất trước.</p>
+        <table class="data-table" style="width:100%">
+          <thead>
+            <tr>
+              <th style="width:160px">Thời gian</th>
+              <th>Nội dung tiến độ</th>
+              <th style="width:180px">Người cập nhật</th>
+            </tr>
+          </thead>
+          <tbody id="modalNhatKyBody">
+            <tr><td colspan="3" class="empty-state">Đang tải…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModalNhatKy()">Đóng</button>
+        <button class="btn btn-primary" onclick="closeModalNhatKy(); openModalCreateNhatKy()">➕ Thêm nhật ký</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Thêm Khách hàng -->
+  <div class="modal-overlay" id="modalKhachHang">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>➕ Thêm Khách hàng</h3>
+        <button class="modal-close" onclick="closeModal('modalKhachHang')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Mã khách hàng</label>
+          <input type="text" class="form-control" id="frmKH_MaKH" placeholder="VD: KH006">
+        </div>
+        <div class="form-group">
+          <label>Tên khách hàng</label>
+          <input type="text" class="form-control" id="frmKH_TenKH" placeholder="Tên công ty hoặc cá nhân">
+        </div>
+        <div class="form-group">
+          <label>Nhóm khách hàng</label>
+          <select class="form-control" id="frmKH_NhomKH">
+            <option value="Doanh nghiệp">Doanh nghiệp</option>
+            <option value="Cá nhân">Cá nhân</option>
+            <option value="Hộ kinh doanh">Hộ kinh doanh</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Loại khách hàng</label>
+          <select class="form-control" id="frmKH_LoaiKH">
+            <option value="Đang phát triển">Đang phát triển</option>
+            <option value="Quản lý">Quản lý</option>
+            <option value="Xử lý nợ">Xử lý nợ</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Nhóm nợ</label>
+          <select class="form-control" id="frmKH_NhomNo">
+            <option value="Chưa dư nợ">Chưa dư nợ</option>
+            <option value="Nhóm 1">Nhóm 1</option>
+            <option value="Nhóm 2">Nhóm 2</option>
+            <option value="Nhóm 3">Nhóm 3</option>
+            <option value="Nhóm 5">Nhóm 5</option>
+            <option value="XLRR">XLRR</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('modalKhachHang')">Hủy</button>
+        <button class="btn btn-primary" onclick="submitKhachHang()">💾 Lưu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Thêm Người dùng -->
+  <div class="modal-overlay" id="modalNguoiDung">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>➕ Thêm Người dùng & Phân quyền</h3>
+        <button class="modal-close" onclick="closeModal('modalNguoiDung')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Email Gmail / Google Workspace</label>
+          <input type="email" class="form-control" id="frmND_Email" placeholder="user@example.com">
+        </div>
+        <div class="form-group">
+          <label>Tên cán bộ</label>
+          <input type="text" class="form-control" id="frmND_TenCanbo" placeholder="Họ và tên cán bộ">
+        </div>
+        <div class="form-group">
+          <label>Role (Vai trò)</label>
+          <select class="form-control" id="frmND_Role">
+            <option value="CBTD">CBTD – Cán bộ tín dụng</option>
+            <option value="KSV">KSV – Kiểm soát viên</option>
+            <option value="BGD">BGD – Ban giám đốc</option>
+            <option value="Admin">Admin – Quản trị viên</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('modalNguoiDung')">Hủy</button>
+        <button class="btn btn-primary" onclick="submitNguoiDung()">💾 Lưu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Import XLSX Người dùng -->
+  <div class="modal-overlay" id="modalImportND">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>📥 Import Người dùng từ XLSX</h3>
+        <button class="modal-close" onclick="closeModal('modalImportND')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="import-info">
+          <p>📋 <strong>Định dạng file XLSX yêu cầu:</strong></p>
+          <table class="data-table" style="margin:10px 0">
+            <thead><tr><th>Email</th><th>TenCanbo</th><th>Role</th></tr></thead>
+            <tbody><tr><td>user@example.com</td><td>Nguyễn Văn A</td><td>CBTD</td></tr></tbody>
+          </table>
+          <p style="font-size:0.8rem;color:var(--text-secondary)">Role hợp lệ: Admin, CBTD, KSV, BGD</p>
+        </div>
+        <div class="file-upload-area" id="dropZoneND" onclick="document.getElementById('fileND').click()">
+          <div class="upload-icon">📂</div>
+          <p>Kéo thả file XLSX vào đây hoặc <strong>bấm để chọn file</strong></p>
+          <input type="file" id="fileND" accept=".xlsx,.xls" style="display:none" onchange="handleFileUpload(this, 'ND')">
+        </div>
+        <div id="previewND" style="display:none">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin:12px 0 8px">
+            <strong id="fileNameND" style="color:var(--success)"></strong>
+            <button class="btn btn-outline btn-sm" onclick="clearImport('ND')">✕ Xóa</button>
+          </div>
+          <div class="table-wrapper" style="max-height:250px;overflow-y:auto">
+            <table class="data-table"><thead><tr><th>#</th><th>Email</th><th>Tên cán bộ</th><th>Role</th><th>Trạng thái</th></tr></thead>
+            <tbody id="previewTableND"></tbody></table>
+          </div>
+          <p style="margin-top:8px;font-size:0.82rem;color:var(--text-secondary)" id="importCountND"></p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('modalImportND')">Hủy</button>
+        <button class="btn btn-success" id="btnImportND" onclick="executeImport('ND')" disabled>📥 Import</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Import XLSX Khách hàng -->
+  <div class="modal-overlay" id="modalImportKH">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>📥 Import Khách hàng từ XLSX</h3>
+        <button class="modal-close" onclick="closeModal('modalImportKH')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="import-info">
+          <p>📋 <strong>Định dạng file XLSX yêu cầu:</strong></p>
+          <table class="data-table" style="margin:10px 0">
+            <thead><tr><th>MaKH</th><th>TenKH</th><th>NhomKH</th><th>LoaiKH</th><th>NhomNo</th></tr></thead>
+            <tbody><tr><td>KH003</td><td>Công ty ABC</td><td>Doanh nghiệp</td><td>Quản lý</td><td>Nhóm 1</td></tr></tbody>
+          </table>
+          <p style="font-size:0.8rem;color:var(--text-secondary)">Loại KH: Đang phát triển, Quản lý, Xử lý nợ | Nhóm nợ: Chưa dư nợ, Nhóm 1, Nhóm 2, Nhóm 3, Nhóm 5, XLRR</p>
+        </div>
+        <div class="file-upload-area" id="dropZoneKH" onclick="document.getElementById('fileKH').click()">
+          <div class="upload-icon">📂</div>
+          <p>Kéo thả file XLSX vào đây hoặc <strong>bấm để chọn file</strong></p>
+          <input type="file" id="fileKH" accept=".xlsx,.xls" style="display:none" onchange="handleFileUpload(this, 'KH')">
+        </div>
+        <div id="previewKH" style="display:none">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin:12px 0 8px">
+            <strong id="fileNameKH" style="color:var(--success)"></strong>
+            <button class="btn btn-outline btn-sm" onclick="clearImport('KH')">✕ Xóa</button>
+          </div>
+          <div class="table-wrapper" style="max-height:250px;overflow-y:auto">
+            <table class="data-table"><thead><tr><th>#</th><th>MaKH</th><th>TenKH</th><th>Nhóm KH</th><th>Loại KH</th><th>Nhóm nợ</th><th>Trạng thái</th></tr></thead>
+            <tbody id="previewTableKH"></tbody></table>
+          </div>
+          <p style="margin-top:8px;font-size:0.82rem;color:var(--text-secondary)" id="importCountKH"></p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('modalImportKH')">Hủy</button>
+        <button class="btn btn-success" id="btnImportKH" onclick="executeImport('KH')" disabled>📥 Import</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Sửa Khách hàng -->
+  <div class="modal-overlay" id="modalEditKhachHang">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>✏️ Cập nhật Khách hàng</h3>
+        <button class="modal-close" onclick="closeModal('modalEditKhachHang')">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="frmEditKH_MaKH">
+        <div class="form-group">
+          <label>Mã khách hàng (không thể thay đổi)</label>
+          <input type="text" class="form-control" id="frmEditKH_MaKH_Display" disabled>
+        </div>
+        <div class="form-group">
+          <label>Tên khách hàng</label>
+          <input type="text" class="form-control" id="frmEditKH_TenKH" placeholder="Tên công ty hoặc cá nhân">
+        </div>
+        <div class="form-group">
+          <label>Nhóm khách hàng</label>
+          <select class="form-control" id="frmEditKH_NhomKH">
+            <option value="Doanh nghiệp">Doanh nghiệp</option>
+            <option value="Cá nhân">Cá nhân</option>
+            <option value="Hộ kinh doanh">Hộ kinh doanh</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Loại khách hàng</label>
+          <select class="form-control" id="frmEditKH_LoaiKH">
+            <option value="Đang phát triển">Đang phát triển</option>
+            <option value="Quản lý">Quản lý</option>
+            <option value="Xử lý nợ">Xử lý nợ</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Nhóm nợ</label>
+          <select class="form-control" id="frmEditKH_NhomNo">
+            <option value="Chưa dư nợ">Chưa dư nợ</option>
+            <option value="Nhóm 1">Nhóm 1</option>
+            <option value="Nhóm 2">Nhóm 2</option>
+            <option value="Nhóm 3">Nhóm 3</option>
+            <option value="Nhóm 5">Nhóm 5</option>
+            <option value="XLRR">XLRR</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('modalEditKhachHang')">Hủy</button>
+        <button class="btn btn-primary" onclick="submitEditKhachHang()">💾 Cập nhật</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Sửa Người dùng -->
+  <div class="modal-overlay" id="modalEditNguoiDung">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>✏️ Cập nhật Người dùng</h3>
+        <button class="modal-close" onclick="closeModal('modalEditNguoiDung')">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="frmEditND_Email">
+        <div class="form-group">
+          <label>Email (không thể thay đổi)</label>
+          <input type="email" class="form-control" id="frmEditND_Email_Display" disabled>
+        </div>
+        <div class="form-group">
+          <label>Tên cán bộ</label>
+          <input type="text" class="form-control" id="frmEditND_TenCanbo" placeholder="Họ và tên cán bộ">
+        </div>
+        <div class="form-group">
+          <label>Role (Vai trò)</label>
+          <select class="form-control" id="frmEditND_Role">
+            <option value="CBTD">CBTD – Cán bộ tín dụng</option>
+            <option value="KSV">KSV – Kiểm soát viên</option>
+            <option value="BGD">BGD – Ban giám đốc</option>
+            <option value="Admin">Admin – Quản trị viên</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('modalEditNguoiDung')">Hủy</button>
+        <button class="btn btn-primary" onclick="submitEditNguoiDung()">💾 Cập nhật</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ JAVASCRIPT ═══ -->
+  <!-- JS nhúng inline để GAS serve qua template -->
+  <script><?!= include('app_js') ?></script>
+</body>
+</html>

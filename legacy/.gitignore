@@ -1,0 +1,17 @@
+# Dependencies & Build
+node_modules/
+.tmp/
+*.tmp
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+
+# IDE & Editor
+.vscode/
+.idea/
+*.suo
+*.user

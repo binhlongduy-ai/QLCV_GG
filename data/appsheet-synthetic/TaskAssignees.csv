@@ -1,0 +1,7 @@
+assignment_id,task_id,user_id,assignee_email_snapshot,assignment_role,assigned_at,active
+ASG-001,TSK-001,USR-004,cbtd01@example.com,primary,2026-10-13T08:10:00Z,TRUE
+ASG-002,TSK-001,USR-005,cbtd02@example.com,collaborator,2026-10-13T08:12:00Z,TRUE
+ASG-003,TSK-001,USR-006,cbtd03@example.com,collaborator,2026-10-13T08:11:00Z,FALSE
+ASG-004,TSK-002,USR-004,cbtd01@example.com,primary,2026-10-13T08:20:00Z,TRUE
+ASG-005,TSK-003,USR-004,cbtd01@example.com,primary,2026-10-09T09:00:00Z,TRUE
+ASG-006,TSK-004,USR-006,cbtd03@example.com,primary,2026-10-13T08:30:00Z,TRUE

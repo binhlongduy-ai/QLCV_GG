@@ -1,0 +1,34 @@
+﻿ĐỀ XUẤT GIẢI PHÁP KỸ THUẬTXÂY DỰNG CHƯƠNG TRÌNH QUẢN LÝ CÔNG VIỆC KHÁCH HÀNG DOANH NGHIỆP
+Kính gửi: Ban Giám đốc Chi nhánhNgười đề xuất: …..,,
+Căn cứ vào yêu cầu quản trị công việc và theo dõi tiến độ xử lý hồ sơ Khách hàng Doanh nghiệp (KHDN) của Chi nhánh, xin đề xuất giải pháp kỹ thuật trên nền tảng Google như sau:
+1. Định hướng nền tảng công nghệ
+Giải pháp được xây dựng dựa trên hệ sinh thái Google Workspace, cụ thể kết hợp 2 công cụ chính:
+Google Sheets (Cơ sở dữ liệu): Lưu trữ toàn bộ thông tin người dùng, danh sách khách hàng, danh mục công việc và nhật ký tiến độ. Cho phép Admin dễ dàng cập nhật/import dữ liệu từ file *.xlsx.
+Google AppSheet (Giao diện phần mềm): Là nền tảng tạo ứng dụng (No-code/Low-code) của Google, liên kết trực tiếp với Google Sheets. Cung cấp giao diện trực quan cho web và thiết bị di động. AppSheet cho phép thiết lập hệ thống phân quyền phức tạp dựa trên tài khoản Google (Gmail) của người dùng.
+2. Thiết kế Cấu trúc Dữ liệu (Database)
+Dữ liệu được tổ chức thành các bảng (Tabs) trên Google Sheets:
+Bảng dữ liệu
+Mục đích & Các trường thông tin chính
+1. NGUOIDUNG (Users)
+Quản lý tài khoản (Email Google), Phân quyền (Admin, CBTD, KSV, BGD).
+2. KHACHHANG (Clients)
+Mã KH, Tên KH, Nhóm (1-Mới; 2-Đang quản lý; 3-Xử lý nợ Admin cập nhật bằng cách copy/paste hoặc import từ file Excel (.xlsx).
+3. CONGVIEC (Tasks)
+Mã CV, Mã KH, Nội dung, CBTD phụ trách, Trạng thái (Chưa làm, Đang làm, Đã hoàn thành).
+4. NHATKY_TIENDO (Logs)
+Mã NK, Mã CV, Chi tiết tiến độ, Thời gian cập nhật, KSV Xác nhận. Bảng này được cấu hình CHỈ THÊM MỚI (Append-only).
+3. Phân quyền và Tính năng theo Đối tượng
+3.1. Quản trị hệ thống (Admin)
+Khai báo user, phân quyền CBTD, KSV, BGD qua địa chỉ email.Import, bổ sung và cập nhật danh sách Khách hàng từ file excel bên ngoài vào Google Sheets.Xử lý các lỗi hệ thống hoặc điều chỉnh dữ liệu khi có sai sót đặc biệt (truy cập thẳng vào Database).
+3.2. Cán bộ tín dụng (CBTD)
+Đăng nhập bằng tài khoản Google, chỉ nhìn thấy danh sách KH và Công việc do mình phụ trách (Dùng hàm USEREMAIL() để filter).Hàng ngày, vào chi tiết từng công việc để Thêm nhật ký tiến độ.Ràng buộc kỹ thuật (Commit): Nút "Cập nhật tiến độ" được thiết lập thuộc tính 'Adds only' (chỉ được thêm dòng mới). Sau khi bấm Lưu (Save/Commit), dữ liệu lập tức bị khóa, CBTD không có nút Sửa (Edit) hay Xóa (Delete) trên nhật ký đã lưu.
+3.3. Kiểm soát viên (KSV)
+Chỉ nhìn thấy dữ liệu của các CBTD thuộc nhóm/phòng mình quản lý.Nhận thông báo khi CBTD cập nhật tiến độ mới.Có nút chức năng riêng: "Xác nhận / Phê duyệt" để duyệt tiến độ hàng ngày của CBTD.
+3.4. Ban Giám đốc (BGĐ)
+Có toàn quyền truy vấn (Read-only) toàn bộ dữ liệu trên hệ thống.Giao diện Dashboard (Bảng điều khiển) cho phép tương tác trực quan: Nhấp chọn tên CBTD để xem toàn bộ KH người đó phụ trách, hoặc nhấp chọn 1 KHDN để xem toàn bộ lịch sử tiến độ từ khi hình thành đến nay.Theo dõi được tổng quan trạng thái: Bao nhiêu việc Chưa làm, Đang làm, Đã hoàn thành.
+4. Giải quyết các Yêu cầu Đặc thù (Constraints)
+Import file *.xlsx: AppSheet hỗ trợ tạo Action "Import a CSV/Excel file for this view". Admin chỉ cần chuẩn bị file danh sách khách hàng đúng biểu mẫu, bấm Import là hệ thống tự đổ vào database.
+Chỉ bổ sung, không được sửa khi đã Commit: Bảng nhật ký được set quyền `Add_Only`. Tại mức dòng (Row-level expression), đặt công thức `Editable_If = FALSE` đối với CBTD, đảm bảo tính minh bạch tuyệt đối của lịch sử công việc.
+5. Lộ trình Triển khai Dự kiến
+1. Khởi tạo Database Google Sheets & Upload dữ liệu mẫu (… ngày)2. Xây dựng UI/UX và logic phân quyền trên AppSheet (….. ngày)3. Chạy thử nghiệm nội bộ (UAT) với nhóm nhỏ KSV & CBTD (…. ngày)4. Đào tạo, ban hành tài liệu HDSD và Triển khai chính thức (… ngày)
+Hà Nội, ngày 14 tháng 08 năm 2026NGƯỜI LẬP ĐỀ XUẤT

@@ -1,0 +1,5 @@
+task_id,task_code,customer_id,title,description,status,priority,due_at,created_by_user_id,completed_at,created_at,updated_at
+TSK-001,CV-TEST-001,CUS-001,Thẩm định hồ sơ mẫu A,Thu thập và kiểm tra hồ sơ mẫu,in_progress,high,2026-10-20,USR-003,,2026-10-13T08:10:00Z,2026-10-13T09:30:00Z
+TSK-002,CV-TEST-002,CUS-002,Kiểm tra tài sản bảo đảm mẫu B,Kiểm tra tài sản theo danh mục mẫu,not_started,normal,2026-10-25,USR-004,,2026-10-13T08:20:00Z,2026-10-13T08:20:00Z
+TSK-003,CV-TEST-003,CUS-003,Thu thập hồ sơ tài chính mẫu C,Thu thập báo cáo tài chính mẫu,completed,high,2026-10-10,USR-001,2026-10-12T10:00:00Z,2026-10-09T09:00:00Z,2026-10-12T10:00:00Z
+TSK-004,CV-TEST-004,CUS-001,Báo cáo tiến độ mẫu D,Báo cáo định kỳ mẫu,not_started,low,2026-10-30,USR-002,,2026-10-13T08:30:00Z,2026-10-13T08:30:00Z

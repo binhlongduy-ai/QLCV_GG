@@ -1,0 +1,16 @@
+permission_id,code,name,description
+PER-01,task.view,Xem công việc,Xem công việc trong phạm vi được phép
+PER-02,task.create,Tạo công việc,Tạo công việc và giao người thực hiện
+PER-03,task.update,Cập nhật công việc,Cập nhật phân công và quản trị công việc; lưu trữ thay vì xóa cứng
+PER-04,task.transfer,Chuyển giao người thực hiện chính,Đổi CBTD chính của công việc
+PER-05,task.start,Bắt đầu công việc,Chuyển công việc được giao sang Đang thực hiện
+PER-06,customer.view,Xem khách hàng,Xem khách hàng trong phạm vi được phép
+PER-07,customer.maintain,Duy trì khách hàng,Tạo và cập nhật khách hàng; không xóa
+PER-08,customer.delete,Xóa khách hàng,Xóa khách hàng
+PER-09,progress.submit,Gửi tiến độ,Gửi cập nhật tiến độ cho công việc được giao
+PER-10,progress.review,Duyệt tiến độ,Duyệt hoặc từ chối cập nhật tiến độ
+PER-11,dashboard.view,Xem bảng điều khiển,Số liệu trong phạm vi được phép
+PER-12,dashboard.view_director,Bảng điều khiển Giám đốc,Có điều kiện; chờ xác nhận cho BGD
+PER-13,audit.view,Xem nhật ký kiểm toán,Xem nhật ký kiểm toán
+PER-14,notification.view,Xem thông báo,Xem thông báo của chính mình
+PER-15,user.manage,Quản lý người dùng,Quản lý người dùng; Backup và Restore

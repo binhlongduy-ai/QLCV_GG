@@ -1,0 +1,9 @@
+audit_id,actor_user_id,actor_email_snapshot,action,entity_type,entity_id,request_or_event_key,created_at
+AUD-001,USR-001,admin@example.com,user.create,User,USR-004,evt-aud-001,2026-10-13T07:55:00Z
+AUD-002,USR-003,ksv01@example.com,customer.create,Customer,CUS-001,evt-aud-002,2026-10-13T08:00:00Z
+AUD-003,USR-003,ksv01@example.com,task.create,Task,TSK-001,evt-aud-003,2026-10-13T08:10:00Z
+AUD-004,USR-003,ksv01@example.com,task.assign,TaskAssignee,ASG-001,evt-aud-004,2026-10-13T08:10:00Z
+AUD-005,USR-004,cbtd01@example.com,progress.submit,TaskUpdate,UPD-001,evt-aud-005,2026-10-13T09:00:00Z
+AUD-006,USR-003,ksv01@example.com,progress.approve,TaskUpdate,UPD-001,evt-aud-006,2026-10-13T09:30:00Z
+AUD-007,USR-003,ksv01@example.com,progress.reject,TaskUpdate,UPD-003,evt-aud-007,2026-10-11T11:00:00Z
+AUD-008,USR-003,ksv01@example.com,task.auto_complete,Task,TSK-003,evt-aud-008,2026-10-12T10:00:00Z
